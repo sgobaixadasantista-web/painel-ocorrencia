@@ -1,0 +1,2 @@
+[functions.analisar-ocorrencia]
+verify_jwt = false

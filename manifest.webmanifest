@@ -1,0 +1,16 @@
+{
+  "name": "Security Rumo — Painel de Ocorrências",
+  "short_name": "Security Rumo",
+  "description": "Registro e acompanhamento de ocorrências da segurança ferroviária.",
+  "lang": "pt-BR",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B2942",
+  "theme_color": "#0B2942",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
