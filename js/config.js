@@ -3,7 +3,7 @@
    - A chave "anon" é pública por desenho: quem protege os dados são as regras (RLS) do arquivo supabase/migrations.
    - NUNCA coloque a chave "service_role" aqui. */
 window.PAINEL_CONFIG = {
-  SUPABASE_URL: '',        // exemplo: https://abcdefgh.supabase.co
+  SUPABASE_URL: 'https://fnqvmuvpensjofiucuty.supabase.co',        // exemplo: https://abcdefgh.supabase.co
   SUPABASE_ANON_KEY: '',   // Supabase > Project Settings > API > anon public
   BUCKET: 'evidencias',    // bucket privado criado pela migração
   PRAZO_ATENCAO_H: 4,      // acima disso o evento fica em "atenção" (valor de referência, a validar com a Rumo)
