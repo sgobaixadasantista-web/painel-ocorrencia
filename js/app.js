@@ -9,6 +9,10 @@
 
   var TRIAGEM = [['criminal', 'Criminal'], ['mecanico', 'Mecânico'], ['social', 'Social'], ['natural', 'Natural']];
   var FORMAS = [['solicitacao', 'Solicitação'], ['flagrante', 'Flagrante'], ['denuncia', 'Denúncia']];
+  var NATUREZAS = [['criminal', 'Criminal'], ['mecanica', 'Mecânica'], ['social', 'Social'], ['natural', 'Natural']];
+  var NI = 'NÃO INFORMADO';
+  var ROT_DADOS = { empresa: 'Empresa', prefixo: 'Prefixo', composicao: 'Composição', vagoes: 'Vagão(ões)', locomotiva: 'Locomotiva', km: 'Km', tipo: 'Tipo', subtipo: 'Subtipo', ativo_afetado: 'Ativo ou material afetado', fato_constatado: 'Fato constatado' };
+  var ROT_REL = { nr_performance: 'Nº Performance', mes: 'Mês', data: 'Data', hora: 'Hora', cidade: 'Cidade', uf: 'UF', trecho: 'Trecho', sb: 'SB', km: 'KM', composicao: 'Composição', empresa: 'Empresa', maquinista: 'Maquinista', re: 'RE', coordenadas: 'Coordenadas', natureza: 'Natureza', tipo: 'Tipo', autoria: 'Autoria', hora_inicio: 'Hora início', hora_final: 'Hora final', thp_total: 'THP total' };
   var CLASSES = [['prevencao', 'Prevenção'], ['natural', 'Natural'], ['mecanica', 'Mecânica'], ['social', 'Social'], ['criminal', 'Criminal']];
   var PERIODOS = [['todos', 'Todo o período'], ['hoje', 'Hoje'], ['7d', 'Últimos 7 dias'], ['30d', 'Últimos 30 dias']];
   var INFO = {
@@ -29,7 +33,7 @@
   var S = {
     tela: 'carregando', usuario: null, visao: 'central', aba: 'eventos', iaBusy: false, pick: null, mantem: false, status: '', busca: '', periodo: 'todos', pagina: 1, porPagina: 10,
     dados: { linhas: [], total: 0 }, kpi: null, carregando: true, erro: '', atualizadoEm: null, sync: 'syncing', tempoReal: false,
-    tipos: { tipos: [], subtipos: {} }, sel: null, det: null, detErro: '', ocupado: false, userPop: false, tok: 0, foco: null, unsub: null, timers: []
+    tipif: { linhas: [], formularios: {}, porId: {} }, sel: null, det: null, detErro: '', ocupado: false, userPop: false, tok: 0, foco: null, unsub: null, timers: []
   };
 
   /* ---------- Utilidades ---------- */
@@ -55,6 +59,18 @@
     return { t: 'Ag. classificação', c: 'warning' };
   }
   function tempoTxt(x) { return (x.status === 'concluido' ? 'em ' : '') + fmtDur(decorrido(x)); }
+  function indexarTipif(t) { var p = {}; t.linhas.forEach(function (l) { p[l.id] = l; }); return { linhas: t.linhas, formularios: t.formularios, porId: p }; }
+  function carregarTipif() { return D.tipificacao().then(function (t) { S.tipif = indexarTipif(t); }); }
+  function tipifTxt(nat, tipo, sub) { return [lbl(NATUREZAS, nat).toUpperCase(), tipo, sub].filter(Boolean).join(' › '); }
+  function camposDe(id) { var l = S.tipif.porId[id], f = l && S.tipif.formularios[l.formulario]; return f ? f.campos : []; }
+  function valorDado(c, v) { return c.tipo === 'sim_nao' ? (v === 'sim' ? 'Sim' : 'Não') : v; }
+  // Dados que a central preencheu no formulário da combinação (rótulos vêm do próprio formulário)
+  function dadosHtml(tipificacaoId, dados) {
+    var cs = camposDe(tipificacaoId), rot = {}; cs.forEach(function (c) { rot[c.chave] = c; });
+    var ks = Object.keys(dados || {}); if (!ks.length) return '';
+    var ordem = cs.map(function (c) { return c.chave; }).filter(function (k) { return ks.indexOf(k) >= 0; });
+    return '<div><h3 class="sec-t">Dados do formulário</h3><dl class="kv">' + ordem.map(function (k) { return '<dt>' + esc(rot[k].rotulo) + '</dt><dd>' + esc(valorDado(rot[k], dados[k])) + '</dd>'; }).join('') + '</dl></div>';
+  }
   function podeTriar() { return S.visao === 'central' && S.usuario && (S.usuario.perfil === 'central' || S.usuario.perfil === 'admin'); }
   function ehIntel() { return S.visao === 'inteligencia'; }
   function ehCampo() { return S.visao === 'campo'; }
@@ -333,62 +349,127 @@
       '<div class="linha-status">' + badge(t.t, t.c) + '<span class="tempo" style="color:var(--rumo-muted)">' + esc(tempoTxt(e)) + '</span></div>' +
       '<dl class="kv"><dt>Registrado em</dt><dd>' + fmtData(e.criadoEm) + '</dd><dt>Registrado por</dt><dd>' + esc(e.criadoPorNome || '—') + '</dd><dt>Local</dt><dd>' + esc(e.local) + '</dd>' +
       (e.latitude != null ? '<dt>GPS</dt><dd><a href="https://www.google.com/maps?q=' + e.latitude + ',' + e.longitude + '" target="_blank" rel="noopener">' + e.latitude.toFixed(5) + ', ' + e.longitude.toFixed(5) + ' · abrir no mapa</a></dd>' : '') +
-      (e.status === 'concluido' ? '<dt>Triagem</dt><dd>' + esc(lbl(TRIAGEM, e.triagemCategoria)) + ' · ' + fmtData(e.triagemEm || e.concluidoEm) + '</dd>' : '') + '</dl>' +
+      (e.status === 'concluido' ? '<dt>Triagem</dt><dd>' + esc(lbl(TRIAGEM, e.triagemCategoria)) + ' · ' + fmtData(e.triagemEm || e.concluidoEm) + '</dd>' : '') +
+      (e.tipificacaoId ? '<dt>Tipificação</dt><dd>' + esc(tipifTxt(e.tipifNatureza, e.tipifTipo, e.tipifSubtipo)) + '</dd>' : '') + '</dl>' +
       '<div><h3 class="sec-t">Descrição</h3><p class="txt">' + esc(e.descricao) + '</p></div>' +
       '<div><h3 class="sec-t">Fotos</h3>' + fotosHtml(d.fotos) + '</div>';
+    if (e.status === 'concluido' && e.triagemDados) corpo += dadosHtml(e.tipificacaoId, e.triagemDados);
     if (e.status === 'concluido' && e.triagemObservacao) corpo += '<div><h3 class="sec-t">Observação da triagem</h3><p class="txt">' + esc(e.triagemObservacao) + '</p></div>';
     if (e.ocorrenciaId) corpo += '<div><button type="button" class="r-btn r-btn-outline" data-act="abrir-oc" data-id="' + esc(e.ocorrenciaId) + '">' + ico('seguranca') + 'Abrir a ocorrência deste evento</button></div>';
     var rodape = '';
-    if (abertoPodeTriar) { corpo += triagemForm(e); rodape = '<button type="button" class="r-btn r-btn-outline" data-act="fechar">Cancelar</button><button type="button" class="r-btn r-btn-primary" id="btn-triar" data-act="triar">Encaminhar à inteligência</button>'; }
+    if (abertoPodeTriar) { corpo += triagemForm(e); rodape = '<button type="button" class="r-btn r-btn-outline" data-act="fechar">Cancelar</button><button type="button" class="r-btn r-btn-primary" id="btn-triar" data-act="triar">Concluir triagem</button>'; }
     else if (e.status === 'aguardando') corpo += '<p class="aviso">Seu perfil não faz triagem. A central de atendimento é quem decide o destino deste evento.</p>';
     drawer('Evento ' + e.numero, 'checklist', corpo, rodape);
     var b = document.querySelector('#drawer-root [data-act=fechar]'); if (b) b.focus();
     if (abertoPodeTriar) syncTriagem();
   }
+  /* ----- Triagem: Natureza > Tipo > Subtipo abre o formulário da combinação ----- */
   function triagemForm(e) {
-    var tipos = S.tipos.tipos;
-    return '<form id="f-tri" class="bloco" novalidate onsubmit="return false"><fieldset><legend class="r-label">Resultado da triagem<span class="r-req" aria-hidden="true">*</span></legend><div class="opcoes">' +
-      TRIAGEM.map(function (t, i) { return '<label class="r-check"><input type="radio" name="cat" value="' + t[0] + '"' + (i === 0 ? ' checked' : '') + '>' + t[1] + '</label>'; }).join('') + '</div></fieldset>' +
-      '<div id="tri-crim" class="bloco"><p class="aviso">Criminal vira uma ocorrência para a inteligência e o evento é concluído automaticamente.</p>' +
-      '<div class="r-field"><label class="r-label" for="tri-tipo">Tipo de ocorrência<span class="r-req" aria-hidden="true">*</span></label><select class="r-input" id="tri-tipo"><option value="">Selecione</option>' + tipos.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') + '</select><div class="r-err" id="er-tipo" hidden></div></div>' +
-      '<div class="r-field" id="fd-sub" hidden><label class="r-label" for="tri-sub">Subtipo<span class="r-req" aria-hidden="true">*</span></label><select class="r-input" id="tri-sub"></select><div class="r-err" id="er-sub" hidden></div></div>' +
+    var req = '<span class="r-req" aria-hidden="true">*</span>';
+    return '<form id="f-tri" class="bloco" novalidate onsubmit="return false"><h3 class="sec-t">Triagem</h3>' +
+      '<fieldset><legend class="r-label">Natureza' + req + '</legend><div class="opcoes">' +
+      NATUREZAS.map(function (n) { return '<label class="r-check"><input type="radio" name="nat" value="' + n[0] + '">' + n[1] + '</label>'; }).join('') + '</div><div class="r-err" id="er-nat" hidden></div></fieldset>' +
+      '<div class="r-field"><label class="r-label" for="tri-tipo">Tipo' + req + '</label><select class="r-input" id="tri-tipo" disabled><option value="">Escolha a natureza primeiro</option></select><div class="r-err" id="er-tipo" hidden></div></div>' +
+      '<div class="r-field"><label class="r-label" for="tri-sub">Subtipo' + req + '</label><select class="r-input" id="tri-sub" disabled><option value="">Escolha o tipo primeiro</option></select><div class="r-err" id="er-sub" hidden></div></div>' +
+      '<div id="tri-dyn" class="bloco"></div>' +
+      '<div id="tri-crim" class="bloco" hidden><p class="aviso">Natureza criminal vira uma ocorrência para a inteligência e o evento é concluído automaticamente.</p>' +
       '<div class="r-field"><label class="r-label" for="tri-forma">Forma de conhecimento</label><select class="r-input" id="tri-forma"><option value="">Não informada</option>' + FORMAS.map(function (f) { return '<option value="' + f[0] + '">' + f[1] + '</option>'; }).join('') + '</select></div>' +
-      '<div class="r-field"><label class="r-label" for="tri-fato">Data e hora do fato<span class="r-req" aria-hidden="true">*</span></label><input class="r-input" id="tri-fato" type="datetime-local" value="' + paraInputLocal(e.criadoEm) + '"><div class="r-err" id="er-fato" hidden></div></div>' +
+      '<div class="r-field"><label class="r-label" for="tri-fato">Data e hora do fato' + req + '</label><input class="r-input" id="tri-fato" type="datetime-local" value="' + paraInputLocal(e.criadoEm) + '"><div class="r-err" id="er-fato" hidden></div></div>' +
       '<div class="r-field"><label class="r-label" for="tri-mesa">Análise da mesa de operações</label><textarea class="r-input" id="tri-mesa" maxlength="4000"></textarea></div></div>' +
-      '<div id="tri-fim" class="bloco" hidden><div class="r-field"><label class="r-label" for="tri-obs">Observação do encerramento<span class="r-req" aria-hidden="true">*</span></label><textarea class="r-input" id="tri-obs" maxlength="4000"></textarea>' +
+      '<div id="tri-fim" class="bloco" hidden><div class="r-field"><label class="r-label" for="tri-obs">Observação do encerramento' + req + '</label><textarea class="r-input" id="tri-obs" maxlength="4000"></textarea>' +
       '<span class="r-hint">Diga o que foi feito para resolver o evento.</span><div class="r-err" id="er-obs" hidden></div></div></div></form>';
   }
+  function triNatureza() { var r = document.querySelector('#f-tri input[name=nat]:checked'); return r ? r.value : ''; }
+  function triLinha() { var n = triNatureza(), t = $('tri-tipo').value, st = $('tri-sub').value; for (var i = 0; i < S.tipif.linhas.length; i++) { var l = S.tipif.linhas[i]; if (l.natureza === n && l.tipo === t && l.subtipo === st) return l; } return null; }
+  function opcoesSel(lista, vazio) { return '<option value="">' + vazio + '</option>' + lista.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join(''); }
+  function unicos(arr) { var v = {}, o = []; arr.forEach(function (x) { if (!v[x]) { v[x] = 1; o.push(x); } }); return o; }
   function syncTriagem() {
-    var f = $('f-tri'); if (!f) return; var cat = f.querySelector('input[name=cat]:checked').value, crim = cat === 'criminal';
-    $('tri-crim').hidden = !crim; $('tri-fim').hidden = crim; $('btn-triar').textContent = crim ? 'Encaminhar à inteligência' : 'Finalizar evento';
+    var f = $('f-tri'); if (!f) return; var nat = triNatureza(), crim = nat === 'criminal', btn = $('btn-triar');
+    $('tri-crim').hidden = !nat || !crim; $('tri-fim').hidden = !nat || crim;
+    btn.textContent = !nat ? 'Concluir triagem' : (crim ? 'Encaminhar à inteligência' : 'Finalizar evento');
+  }
+  function aoEscolherNatureza() {
+    var nat = triNatureza(), tipos = unicos(S.tipif.linhas.filter(function (l) { return l.natureza === nat; }).map(function (l) { return l.tipo; }));
+    var t = $('tri-tipo'), st = $('tri-sub'); t.disabled = !tipos.length; t.innerHTML = opcoesSel(tipos, 'Selecione o tipo (' + tipos.length + ')');
+    st.disabled = true; st.innerHTML = '<option value="">Escolha o tipo primeiro</option>'; $('tri-dyn').innerHTML = ''; syncTriagem();
+    ['er-nat', 'er-tipo', 'er-sub'].forEach(function (i) { erroCampo(i, ''); });
+  }
+  function aoEscolherTipo() {
+    var nat = triNatureza(), tipo = $('tri-tipo').value, subs = unicos(S.tipif.linhas.filter(function (l) { return l.natureza === nat && l.tipo === tipo; }).map(function (l) { return l.subtipo; })), st = $('tri-sub');
+    st.disabled = !subs.length; st.innerHTML = opcoesSel(subs, tipo ? 'Selecione o subtipo (' + subs.length + ')' : 'Escolha o tipo primeiro'); $('tri-dyn').innerHTML = '';
+    if (subs.length === 1) { st.value = subs[0]; aoEscolherSubtipo(); }
+  }
+  /* ----- Formulário de referência da combinação (definido na tabela "formularios") ----- */
+  function campoRef(c) {
+    var id = 'f-' + c.chave, req = c.obrigatorio ? '<span class="r-req" aria-hidden="true">*</span>' : '', at = ' id="' + id + '" data-k="' + esc(c.chave) + '" data-t="' + esc(c.tipo) + '"', ctrl;
+    if (c.tipo === 'textarea') ctrl = '<textarea class="r-input"' + at + ' maxlength="' + (c.max || 2000) + '"></textarea>';
+    else if (c.tipo === 'select') ctrl = '<select class="r-input"' + at + '><option value="">Selecione</option>' + (c.opcoes || []).map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '</select>';
+    else if (c.tipo === 'sim_nao') ctrl = '<select class="r-input"' + at + '><option value="">Selecione</option><option value="sim">Sim</option><option value="nao">Não</option></select>';
+    else if (c.tipo === 'hora') ctrl = '<input class="r-input"' + at + ' type="time">';
+    else if (c.tipo === 'numero') ctrl = '<input class="r-input"' + at + ' type="text" inputmode="numeric" maxlength="9" autocomplete="off">';
+    else if (c.tipo === 'km') ctrl = '<input class="r-input"' + at + ' type="text" placeholder="115+500" maxlength="9" autocomplete="off">';
+    else ctrl = '<input class="r-input"' + at + ' type="text" maxlength="' + (c.max || 200) + '" autocomplete="off">';
+    return '<div class="r-field"><label class="r-label" for="' + id + '">' + esc(c.rotulo) + req + '</label>' + ctrl + (c.ajuda ? '<span class="r-hint">' + esc(c.ajuda) + '</span>' : '') + '<div class="r-err" id="er-' + id + '" hidden></div></div>';
+  }
+  function aoEscolherSubtipo() {
+    var l = triLinha(), box = $('tri-dyn'); if (!l) { box.innerHTML = ''; return; }
+    var fm = S.tipif.formularios[l.formulario]; if (!fm) { box.innerHTML = '<p class="aviso">Esta combinação não tem formulário ativo.</p>'; return; }
+    var grupos = {}, ordem = []; fm.campos.forEach(function (c) { var g = c.grupo || 'Principal'; if (!grupos[g]) { grupos[g] = []; ordem.push(g); } grupos[g].push(c); });
+    var obrig = fm.campos.filter(function (c) { return c.obrigatorio; });
+    // campos obrigatórios e o grupo "Principal" ficam sempre à vista; os demais grupos abrem sob demanda
+    var h = '<div class="ref-form"><div class="ref-cab"><b>' + esc(fm.nome) + '</b><span class="r-hint">' + esc(tipifTxt(l.natureza, l.tipo, l.subtipo)) + '</span></div>';
+    ordem.forEach(function (g) {
+      var cs = grupos[g], aberto = g === 'Principal' || cs.some(function (c) { return c.obrigatorio; });
+      var corpo = cs.map(campoRef).join('');
+      h += aberto ? '<div class="ref-grupo">' + (g !== 'Principal' ? '<h4 class="sec-t">' + esc(g) + '</h4>' : '') + corpo + '</div>'
+        : '<details class="ref-grupo" data-g="' + esc(g) + '"><summary>' + esc(g) + ' <span class="r-hint">(' + cs.length + ' campos, opcionais)</span></summary>' + corpo + '</details>';
+    });
+    box.innerHTML = h + '</div>';
+  }
+  function validarCampoRef(c, t) {
+    var r = c.rotulo; if (!t) return c.obrigatorio ? 'Preencha o campo: ' + r + '.' : '';
+    if (c.tipo === 'numero' && !/^\d{1,9}$/.test(t)) return r + ': informe só números.';
+    if (c.tipo === 'km' && !/^\d{1,4}\+\d{3}$/.test(t)) return r + ': use o formato 115+500.';
+    if (c.tipo === 'hora' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) return r + ': use o formato HH:MM.';
+    if (c.tipo === 'select' && (c.opcoes || []).indexOf(t) < 0) return r + ': escolha uma das opções da lista.';
+    if ((c.tipo === 'texto' || c.tipo === 'textarea') && t.length > (c.max || (c.tipo === 'texto' ? 200 : 2000))) return r + ': texto longo demais.';
+    return '';
+  }
+  function coletarForm(l) {
+    var fm = S.tipif.formularios[l.formulario], dados = {}, bad = false;
+    fm.campos.forEach(function (c) {
+      var el = $('f-' + c.chave), v = el ? String(el.value || '').trim() : '', m = validarCampoRef(c, v);
+      erroCampo('er-f-' + c.chave, m, 'f-' + c.chave);
+      if (m) { bad = true; var d = el && el.closest('details'); if (d) d.open = true; } else if (v) dados[c.chave] = v;
+    });
+    return { dados: dados, bad: bad };
   }
   function erroCampo(id, msg, campo) { var el = $(id); if (el) { el.textContent = msg || ''; el.hidden = !msg; el.innerHTML = msg ? ico('alerta') + esc(msg) : ''; } var c = $(campo); if (c) c.setAttribute('aria-invalid', msg ? 'true' : 'false'); }
 
   async function acaoTriar() {
-    if (S.ocupado || !S.det) return; var e = S.det.evento, f = $('f-tri'); if (!f) return;
-    var cat = f.querySelector('input[name=cat]:checked').value, btn = $('btn-triar');
-    ['er-tipo', 'er-sub', 'er-fato', 'er-obs'].forEach(function (i) { erroCampo(i, ''); });
-    var args, texto, rotulo;
-    if (cat === 'criminal') {
-      var tipo = $('tri-tipo').value, sub = $('tri-sub').value, fato = $('tri-fato').value, tem = !!(S.tipos.subtipos[tipo] || []).length, bad = false;
-      if (!tipo) { erroCampo('er-tipo', 'Escolha o tipo de ocorrência.', 'tri-tipo'); bad = true; }
-      if (tipo && tem && !sub) { erroCampo('er-sub', 'Escolha o subtipo.', 'tri-sub'); bad = true; }
-      if (!fato) { erroCampo('er-fato', 'Informe a data e a hora do fato.', 'tri-fato'); bad = true; }
-      if (bad) return;
-      args = { eventoId: e.id, tipo: tipo, subtipo: tem ? sub : '', forma: $('tri-forma').value, fatoEm: new Date(fato).getTime(), analiseMesa: $('tri-mesa').value };
-      texto = 'O evento ' + e.numero + ' será concluído e uma ocorrência (' + tipo + (tem ? ', ' + sub : '') + ') será criada para a inteligência. Não dá para desfazer.'; rotulo = 'Encaminhar';
-    } else {
-      var obs = $('tri-obs').value.trim();
-      if (!obs) { erroCampo('er-obs', 'Descreva o que foi feito para encerrar o evento.', 'tri-obs'); return; }
-      args = { eventoId: e.id, categoria: cat, observacao: obs };
-      texto = 'O evento ' + e.numero + ' será finalizado como ' + lbl(TRIAGEM, cat).toLowerCase() + ', sem ocorrência. Não dá para desfazer.'; rotulo = 'Finalizar';
-    }
-    var sim = await confirmar({ titulo: cat === 'criminal' ? 'Encaminhar à inteligência?' : 'Finalizar o evento?', texto: texto, rotulo: rotulo });
+    if (S.ocupado || !S.det) return; var e = S.det.evento, f = $('f-tri'); if (!f) return; var btn = $('btn-triar');
+    ['er-nat', 'er-tipo', 'er-sub', 'er-fato', 'er-obs'].forEach(function (i) { erroCampo(i, ''); });
+    var nat = triNatureza(), bad = false;
+    if (!nat) { erroCampo('er-nat', 'Escolha a natureza.'); return; }
+    if (!$('tri-tipo').value) { erroCampo('er-tipo', 'Escolha o tipo.', 'tri-tipo'); bad = true; }
+    else if (!$('tri-sub').value) { erroCampo('er-sub', 'Escolha o subtipo.', 'tri-sub'); bad = true; }
+    if (bad) return;
+    var l = triLinha(); if (!l) { erroCampo('er-sub', 'Escolha uma combinação da lista.', 'tri-sub'); return; }
+    var col = coletarForm(l), crim = nat === 'criminal', args, texto, rotulo;
+    if (crim && !$('tri-fato').value) { erroCampo('er-fato', 'Informe a data e a hora do fato.', 'tri-fato'); bad = true; }
+    if (!crim && !$('tri-obs').value.trim()) { erroCampo('er-obs', 'Descreva o que foi feito para encerrar o evento.', 'tri-obs'); bad = true; }
+    if (col.bad || bad) { toast('warning', 'Confira o formulário', 'Há campos para corrigir.'); return; }
+    var tipif = tipifTxt(l.natureza, l.tipo, l.subtipo);
+    if (crim) { args = { eventoId: e.id, tipificacaoId: l.id, dados: col.dados, forma: $('tri-forma').value, fatoEm: new Date($('tri-fato').value).getTime(), analiseMesa: $('tri-mesa').value };
+      texto = 'O evento ' + e.numero + ' será concluído e uma ocorrência (' + tipif + ') será criada para a inteligência. Não dá para desfazer.'; rotulo = 'Encaminhar'; }
+    else { args = { eventoId: e.id, tipificacaoId: l.id, dados: col.dados, observacao: $('tri-obs').value.trim() };
+      texto = 'O evento ' + e.numero + ' será finalizado como ' + tipif + ', sem ocorrência. Não dá para desfazer.'; rotulo = 'Finalizar'; }
+    var sim = await confirmar({ titulo: crim ? 'Encaminhar à inteligência?' : 'Finalizar o evento?', texto: texto, rotulo: rotulo });
     if (!sim) return;
     S.ocupado = true; btn.disabled = true; btn.textContent = 'Salvando…';
     try {
-      if (cat === 'criminal') await D.triarCriminal(args); else await D.finalizar(args);
-      toast('success', cat === 'criminal' ? 'Ocorrência criada' : 'Evento finalizado', 'O evento ' + e.numero + ' foi concluído.');
+      await D.triar(args);
+      toast('success', crim ? 'Ocorrência criada' : 'Evento finalizado', 'O evento ' + e.numero + ' foi concluído.');
       fechar(); carregar({ silencioso: true });
     } catch (err) {
       toast('danger', 'Não foi possível salvar', err.message);
@@ -403,11 +484,14 @@
     var corpo = stepsHtml(['Criada', 'Análise', 'Boletim', 'Classificação', 'Concluída'], idx) +
       '<div class="linha-status">' + badge(t.t, t.c) + '<span class="tempo" style="color:var(--rumo-muted)">' + esc(tempoTxt(o)) + '</span></div>' +
       '<dl class="kv"><dt>Evento de origem</dt><dd>' + (ehIntel() ? esc(o.eventoNumero || '—') : '<button type="button" class="r-btn r-btn-ghost r-btn-sm" style="min-height:24px;padding:0" data-act="abrir-ev" data-id="' + esc(o.eventoId) + '">' + esc(o.eventoNumero || 'Abrir evento') + '</button>') + '</dd>' +
-      '<dt>Tipo</dt><dd>' + esc(o.tipo) + (o.subtipo ? ' · ' + esc(o.subtipo) : '') + '</dd><dt>Local</dt><dd>' + esc(o.local) + '</dd><dt>Fato em</dt><dd>' + fmtData(o.fatoEm) + '</dd>' +
+      '<dt>Tipificação</dt><dd>' + esc(o.natureza ? tipifTxt(o.natureza, o.tipo, o.subtipo) : o.tipo + (o.subtipo ? ' › ' + o.subtipo : '')) + '</dd><dt>Local</dt><dd>' + esc(o.local) + '</dd>' +
+      (o.latitude != null ? '<dt>GPS</dt><dd><a href="https://www.google.com/maps?q=' + o.latitude + ',' + o.longitude + '" target="_blank" rel="noopener">' + o.latitude.toFixed(5) + ', ' + o.longitude.toFixed(5) + ' · abrir no mapa</a></dd>' : '') +
+      '<dt>Fato em</dt><dd>' + fmtData(o.fatoEm) + '</dd>' +
       '<dt>Conhecimento</dt><dd>' + esc(lbl(FORMAS, o.forma) || 'Não informado') + '</dd><dt>Aberta por</dt><dd>' + esc(o.criadoPorNome || '—') + '</dd>' +
       '<dt>Boletim</dt><dd>' + (o.boletimExiste == null ? 'Não informado' : (o.boletimExiste ? 'Sim' + (o.boletimNumero ? ' · nº ' + esc(o.boletimNumero) : '') : 'Não')) + '</dd>' +
       '<dt>Classificação</dt><dd>' + (o.classificacao ? badge(lbl(CLASSES, o.classificacao), 'neutral') : (ehIntel() ? 'Pendente' : 'Ag. classificação (feita pela inteligência)')) + '</dd></dl>' +
       '<div><h3 class="sec-t">Descrição</h3><p class="txt">' + esc(o.descricao) + '</p></div>' +
+      dadosHtml(o.tipificacaoId, o.dados) +
       '<div><h3 class="sec-t">Fotos</h3>' + fotosHtml(d.fotos) + '</div>' +
       '<div><h3 class="sec-t">Análise da mesa de operações</h3><p class="txt">' + esc(o.analiseMesa || 'Sem análise da mesa.') + '</p></div>' +
       '<div><h3 class="sec-t">Análises da ocorrência</h3>' + (d.analises.length ? '<ul class="analises">' + d.analises.map(function (a) { return '<li><small>' + fmtData(a.em) + ' · ' + esc(a.autor) + '</small>' + esc(a.texto) + '</li>'; }).join('') + '</ul>' : '<p class="txt" style="color:var(--rumo-muted)">Nenhuma análise registrada ainda.</p>') + '</div>';
@@ -434,25 +518,47 @@
   }
 
   /* ---------- Inteligência: IA, boletim, classificação e conclusão ---------- */
+  function kvDados(obj, rot) {
+    return Object.keys(rot).map(function (k) { var v = obj && obj[k] != null ? obj[k] : NI; return '<dt>' + esc(rot[k]) + '</dt><dd' + (v === NI ? ' style="color:var(--rumo-muted)"' : '') + '>' + esc(v) + '</dd>'; }).join('');
+  }
   function iaHtml(d) {
     var o = d.ocorrencia, ult = d.ia && d.ia[0], r = ult && ult.resultado;
-    var h = '<div class="bloco"><h3 class="sec-t">Análise por IA</h3>';
+    var h = '<div class="bloco"><h3 class="sec-t">Análise por IA (3 agentes)</h3>';
     if (o.status !== 'concluido') {
       h += '<div class="linha-status"><button type="button" class="r-btn r-btn-outline r-btn-sm" id="btn-ia" data-act="ia"' + (S.iaBusy ? ' disabled' : '') + '>' + ico('checklist') + (S.iaBusy ? 'Analisando…' : (r ? 'Analisar de novo' : 'Analisar com IA')) + '</button>' +
-        '<span class="r-hint" id="ia-st">' + (S.iaBusy ? 'Pode levar até 30 segundos.' : '') + '</span></div><div class="r-err" id="er-ia" hidden></div>';
+        '<span class="r-hint" id="ia-st">' + (S.iaBusy ? 'Roda os 3 agentes em sequência. Pode levar até 1 minuto.' : '') + '</span></div><div class="r-err" id="er-ia" hidden></div>';
     }
-    if (!r) return h + '<p class="txt" style="color:var(--rumo-muted)">Nenhuma análise por IA ainda. A IA lê o registro e sugere nota de qualidade, viabilidade de boletim e uma minuta para você revisar.</p></div>';
-    var nota = Math.max(0, Math.min(10, Number(r.qualidade && r.qualidade.nota) || 0)), viavel = r.viabilidade && r.viabilidade.status === 'VIÁVEL PARA BO', n = (r.minuta || '').length;
-    h += '<div class="r-card ia-card"><p class="aviso">Gerado por IA em ' + fmtData(ult.em) + (ult.modelo ? ' (' + esc(ult.modelo) + ')' : '') + '. Confira cada fato no registro antes de usar: a IA só deve usar o que está escrito, e o que faltou aparece como NÃO INFORMADO.</p>' +
-      '<dl class="kv"><dt>Qualidade</dt><dd><b>Nota ' + nota + ' de 10</b><div class="r-progress" role="img" aria-label="Nota ' + nota + ' de 10"><div style="width:' + (nota * 10) + '%"></div></div>' + esc(r.qualidade && r.qualidade.justificativa) + '</dd>' +
-      '<dt>Boletim</dt><dd>' + badge(viavel ? 'Viável para BO' : 'Sem BO aplicável', viavel ? 'info' : 'neutral') + ' ' + esc(r.viabilidade && r.viabilidade.justificativa) + '</dd>' +
-      '<dt>Tipificação</dt><dd><b>' + esc(r.tipificacao && r.tipificacao.artigo) + '</b> · uso interno<br>' + esc(r.tipificacao && r.tipificacao.fundamento) + '</dd>' +
-      ((r.naoInformado && r.naoInformado.length) ? '<dt>Não encontrado</dt><dd>' + r.naoInformado.map(esc).join(', ') + '</dd>' : '') + '</dl>';
-    if (r.minuta) h += '<div class="r-field"><label class="r-label" for="ia-minuta">Minuta do boletim</label><textarea class="r-input" id="ia-minuta" readonly rows="7">' + esc(r.minuta) + '</textarea>' +
-      '<span class="r-hint">' + n.toLocaleString('pt-BR') + ' de 1.200 caracteres. Trechos [NÃO INFORMADO] precisam ser preenchidos por você.</span>' +
-      '<div><button type="button" class="r-btn r-btn-outline r-btn-sm" data-act="copiar-minuta">' + ico('documento') + 'Copiar minuta</button></div></div>';
-    if (d.ia.length > 1) h += '<span class="r-hint">' + (d.ia.length - 1) + ' análise(s) anterior(es) guardada(s).</span>';
-    return h + '</div></div>';
+    if (!r) return h + '<p class="txt" style="color:var(--rumo-muted)">Nenhuma análise por IA ainda. Os 3 agentes avaliam a qualidade do registro, indicam a tipificação e a minuta e redigem o parecer para a Delegacia Digital. Você revisa antes de usar.</p></div>';
+    if (!r.agente1) return h + '<p class="aviso">Esta análise foi feita com o formato antigo (1 agente). Use "Analisar de novo".</p></div>';
+    var a1 = r.agente1, a2 = r.agente2 || {}, a3 = r.agente3 || {}, nota = Math.max(0, Math.min(10, Number(a1.qualidade && a1.qualidade.nota) || 0)), viavel = a1.viabilidade && a1.viabilidade.status === 'VIÁVEL PARA BO';
+    var v = r.versoes || {}, ver = (v.agentes ? 'Agentes v' + [v.agentes['1'], v.agentes['2'], v.agentes['3']].join(' / v') : '') + (v.minuta ? ' · minuta ' + v.minuta.numero + ' v' + v.minuta.versao : '');
+    h += '<div class="r-card ia-card"><p class="aviso">Gerado por IA em ' + fmtData(ult.em) + (ult.modelo ? ' (' + esc(ult.modelo) + ')' : '') + '. ' + (r.simulacao ? '<b>Simulação do modo demonstração, sem IA real.</b> ' : '') +
+      'Confira cada fato no registro antes de usar. O que faltou no registro aparece como ' + NI + ' ou fica fora do texto.</p>';
+    // Agente 1
+    h += '<details class="ia-etapa" open><summary>1. Qualidade do registro e viabilidade de BO</summary><dl class="kv"><dt>Qualidade</dt><dd><b>Nota ' + nota + ' de 10</b><div class="r-progress" role="img" aria-label="Nota ' + nota + ' de 10"><div style="width:' + (nota * 10) + '%"></div></div>' + esc(a1.qualidade && a1.qualidade.justificativa) + '</dd>' +
+      '<dt>Boletim</dt><dd>' + badge(viavel ? 'Viável para BO' : 'Sem BO aplicável', viavel ? 'info' : 'neutral') + ' ' + esc(a1.viabilidade && a1.viabilidade.justificativa) + '</dd></dl>' +
+      '<h4 class="sec-t" style="margin-top:12px">Dados extraídos para o boletim</h4><dl class="kv">' + kvDados(a1.dados, ROT_DADOS) + '</dl></details>';
+    // Agente 2
+    h += '<details class="ia-etapa" open><summary>2. Tipificação penal e minuta</summary>' +
+      (a2.tipificacao ? '<dl class="kv"><dt>Tipificação</dt><dd><b>' + esc(a2.tipificacao.artigo) + '</b> · uso interno, não vai para o boletim<br>' + esc(a2.tipificacao.fundamento) + '</dd>' +
+        '<dt>Minuta</dt><dd>' + (a2.minuta ? '<b>Minuta ' + a2.minuta.numero + ' — ' + esc(a2.minuta.nome) + '</b><br>' + esc(a2.minuta.justificativa) : '<b>' + esc(a2.mensagem || 'MINUTA NÃO APLICÁVEL') + '</b>') + '</dd></dl>' : '') +
+      (a2.encerrado && a2.mensagem && !a2.tipificacao ? '<p class="txt"><b>' + esc(a2.mensagem) + '</b></p>' : '') + '</details>';
+    // Agente 3
+    h += '<div class="ia-etapa-fixa"><h4 class="sec-t">3. Parecer para a Delegacia Digital</h4>';
+    if (a3.encerrado || !a3.parecer) h += '<p class="txt"><b>' + esc(a3.mensagem || 'SEM PARECER — Ocorrência não elegível para geração de BO.') + '</b></p>';
+    else {
+      var ok = a3.status === 'DENTRO DO LIMITE';
+      h += '<div class="r-field"><label class="r-label" for="ia-minuta">Texto pronto para copiar e colar</label><textarea class="r-input" id="ia-minuta" readonly rows="9">' + esc(a3.parecer) + '</textarea>' +
+        '<span class="r-hint">' + badge(a3.status, ok ? 'success' : 'warning') + ' ' + Number(a3.caracteres).toLocaleString('pt-BR') + ' de 1.200 caracteres (contados pelo sistema)</span>' +
+        '<div><button type="button" class="r-btn r-btn-outline r-btn-sm" data-act="copiar-minuta">' + ico('documento') + 'Copiar parecer</button></div></div>' +
+        ((a3.camposNaoLocalizados && a3.camposNaoLocalizados.length) ? '<p class="txt"><b>Campos não localizados no registro</b> (ficaram fora do texto): ' + a3.camposNaoLocalizados.map(esc).join(', ') + '.</p>' : '<p class="txt">Campos não localizados no registro: nenhum.</p>');
+    }
+    h += '</div>';
+    if (r.verificacoes && r.verificacoes.length) h += '<details class="ia-etapa"' + (r.verificacoes.some(function (x) { return !x.ok; }) ? ' open' : '') + '><summary>Verificações do sistema (' + r.verificacoes.filter(function (x) { return x.ok; }).length + ' de ' + r.verificacoes.length + ' ok)</summary><ul class="ver-lista">' +
+      r.verificacoes.map(function (x) { return '<li class="' + (x.ok ? 'ver-ok' : 'ver-ruim') + '">' + ico(x.ok ? 'sucesso' : 'erro') + '<span>' + esc(x.regra) + (x.ok ? '' : ' — ' + esc(x.detalhe || 'conferir')) + '</span></li>'; }).join('') + '</ul></details>';
+    // Relatório estatístico (Seção 4 do agente 1): separado do boletim
+    h += '<details class="ia-etapa"><summary>Relatório estatístico padronizado <span class="r-hint">(não usar no boletim)</span></summary><p class="r-hint">Contém dados pessoais (primeiro nome e RE do maquinista). Serve só à coleta estatística da Rumo.</p><dl class="kv">' + kvDados(a1.relatorio, ROT_REL) + '</dl></details>';
+    return h + (ver ? '<span class="r-hint">' + esc(ver) + '</span>' : '') + '</div></div>';
   }
   function boletimHtml(o) {
     var h = '<div class="bloco"><h3 class="sec-t">Boletim de ocorrência</h3>';
@@ -515,7 +621,7 @@
   }
   function copiarMinuta() {
     var ta = $('ia-minuta'); if (!ta) return; var txt = ta.value;
-    function ok() { toast('success', 'Minuta copiada', 'Confira os dados antes de registrar o boletim.'); }
+    function ok() { toast('success', 'Parecer copiado', 'Confira os dados antes de registrar o boletim.'); }
     function plano() { ta.focus(); ta.select(); try { document.execCommand('copy') ? ok() : toast('warning', 'Copie manualmente', 'Selecione o texto da minuta e use Ctrl+C.'); } catch (e) { toast('warning', 'Copie manualmente', 'Selecione o texto da minuta e use Ctrl+C.'); } }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, plano); else plano();
   }
@@ -526,7 +632,7 @@
     fechar(); pararTudo();
     if (ehCampo()) { renderApp(); return; }
     renderApp(); carregar(); ligarPainel();
-    if (!S.tipos.tipos.length) D.tipos().then(function (t) { S.tipos = t; }).catch(function () {});
+    if (!S.tipif.linhas.length) carregarTipif().catch(function () {});
   }
 
   /* ---------- Info (explicação do indicador) ---------- */
@@ -552,8 +658,8 @@
       } while (todos.length < total && pg <= 20);
       var cel = function (v) { v = v == null ? '' : String(v); return /[;"\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
       var ev = S.aba === 'eventos', cab, rows;
-      if (ev) { cab = ['Número', 'Registrado em', 'Local', 'Descrição', 'Registrado por', 'Tempo', 'Status', 'Triagem']; rows = todos.map(function (e) { return [e.numero, fmtData(e.criadoEm), e.local, e.descricao, e.criadoPorNome, tempoTxt(e), tomEvento(e).t, lbl(TRIAGEM, e.triagemCategoria)]; }); }
-      else { cab = ['Número', 'Evento', 'Fato em', 'Local', 'Tipo', 'Subtipo', 'Tempo', 'Status', 'Boletim', 'Classificação']; rows = todos.map(function (o) { return [o.numero, o.eventoNumero, fmtData(o.fatoEm), o.local, o.tipo, o.subtipo, tempoTxt(o), tomOc(o).t, o.boletimExiste == null ? 'Pendente' : (o.boletimExiste ? 'Sim' + (o.boletimNumero ? ' ' + o.boletimNumero : '') : 'Não'), lbl(CLASSES, o.classificacao)]; }); }
+      if (ev) { cab = ['Número', 'Registrado em', 'Local', 'Descrição', 'Registrado por', 'Tempo', 'Status', 'Triagem', 'Tipificação']; rows = todos.map(function (e) { return [e.numero, fmtData(e.criadoEm), e.local, e.descricao, e.criadoPorNome, tempoTxt(e), tomEvento(e).t, lbl(TRIAGEM, e.triagemCategoria), e.tipificacaoId ? tipifTxt(e.tipifNatureza, e.tipifTipo, e.tipifSubtipo) : '']; }); }
+      else { cab = ['Número', 'Evento', 'Fato em', 'Local', 'Natureza', 'Tipo', 'Subtipo', 'Tempo', 'Status', 'Boletim', 'Classificação']; rows = todos.map(function (o) { return [o.numero, o.eventoNumero, fmtData(o.fatoEm), o.local, lbl(NATUREZAS, o.natureza), o.tipo, o.subtipo, tempoTxt(o), tomOc(o).t, o.boletimExiste == null ? 'Pendente' : (o.boletimExiste ? 'Sim' + (o.boletimNumero ? ' ' + o.boletimNumero : '') : 'Não'), lbl(CLASSES, o.classificacao)]; }); }
       var csv = '\ufeff' + [cab].concat(rows).map(function (l) { return l.map(cel).join(';'); }).join('\r\n');
       var url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a'), d = new Date();
       a.href = url; a.download = (ev ? 'eventos-' : 'ocorrencias-') + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '.csv'; document.body.appendChild(a); a.click(); a.remove();
@@ -599,12 +705,14 @@
   document.addEventListener('change', function (ev) {
     var t = ev.target;
     if (t.id === 'periodo') { S.periodo = t.value; S.pagina = 1; carregar(); }
-    else if (t.name === 'cat') syncTriagem();
+    else if (t.name === 'nat') aoEscolherNatureza();
+    else if (t.id === 'tri-tipo') aoEscolherTipo();
+    else if (t.id === 'tri-sub') aoEscolherSubtipo();
     else if (t.id === 'bo-existe') { var f = $('fd-bo-num'); if (f) f.hidden = t.value !== 'sim'; }
-    else if (t.id === 'tri-tipo') {
-      var subs = S.tipos.subtipos[t.value] || [], fd = $('fd-sub');
-      fd.hidden = !subs.length; $('tri-sub').innerHTML = '<option value="">Selecione</option>' + subs.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join('');
-    }
+  });
+  document.addEventListener('focusout', function (ev) {
+    var t = ev.target; if (!t || t.getAttribute('data-t') !== 'km') return;
+    var m = String(t.value).trim().match(/^(\d{1,4})[.,](\d{3})$/); if (m) t.value = m[1] + '+' + m[2];
   });
   var _busca = null;
   document.addEventListener('input', function (ev) {
@@ -645,7 +753,7 @@
     S.tela = 'painel'; pararTudo();
     if (ehCampo()) { renderApp(); return; }
     renderApp(); carregar();
-    D.tipos().then(function (t) { S.tipos = t; }).catch(function () { toast('warning', 'Lista de tipos indisponível', 'A triagem criminal precisa dos tipos. Atualize a página.'); });
+    carregarTipif().catch(function () { toast('warning', 'Tipificação indisponível', 'A triagem precisa da lista de natureza, tipo e subtipo. Atualize a página.'); });
     ligarPainel();
   }
   function sair() { pararTudo(); fechar(); S.userPop = false; D.sair().catch(function () {}).then(function () { S.usuario = null; S.dados = { linhas: [], total: 0 }; S.kpi = null; S.tela = 'login'; renderApp(); }); }

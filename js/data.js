@@ -26,7 +26,9 @@
     resultado_invalido: 'A resposta da IA veio em formato inesperado.',
     fotos_demais: 'Envie no máximo 6 fotos por registro.',
     foto_invalida: 'Foto fora da sua pasta de envio.',
-    gps_invalido: 'Localização GPS inválida.'
+    gps_invalido: 'Localização GPS inválida.',
+    tipificacao_invalida: 'Escolha natureza, tipo e subtipo da lista.',
+    dados_invalidos: 'Os dados do formulário estão inválidos. Confira os campos.'
   };
   function erro(e) {
     var m = (e && (e.hint || MSG[e.message] || e.message)) || 'Não foi possível concluir. Tente de novo.';
@@ -43,7 +45,9 @@
       criadoPorNome: r.criado_por_nome || '', triagemCategoria: r.triagem_categoria || null,
       triagemObservacao: r.triagem_observacao || '', triagemEm: ms(r.triagem_em),
       ocorrenciaId: r.ocorrencia_id || null, qtdFotos: r.qtd_fotos || 0,
-      latitude: r.latitude == null ? null : Number(r.latitude), longitude: r.longitude == null ? null : Number(r.longitude) };
+      latitude: r.latitude == null ? null : Number(r.latitude), longitude: r.longitude == null ? null : Number(r.longitude),
+      tipificacaoId: r.tipificacao_id == null ? null : r.tipificacao_id, triagemDados: r.triagem_dados || null,
+      tipifNatureza: r.tipif_natureza || null, tipifTipo: r.tipif_tipo || '', tipifSubtipo: r.tipif_subtipo || '' };
   }
   function ocorrencia(r) {
     return { id: r.id, numero: r.numero_formatado, eventoId: r.evento_id, eventoNumero: r.evento_numero_formatado,
@@ -51,7 +55,9 @@
       fatoEm: ms(r.fato_em), analiseMesa: r.analise_mesa || '', status: r.status, boletimExiste: r.boletim_existe,
       boletimNumero: r.boletim_numero || '', classificacao: r.classificacao || null, classificadoEm: ms(r.classificado_em),
       criadoEm: ms(r.criado_em), concluidoEm: ms(r.concluido_em), segundos: Number(r.segundos || 0),
-      qtdAnalises: r.qtd_analises || 0, qtdIa: r.qtd_ia || 0, criadoPorNome: r.criado_por_nome || '' };
+      qtdAnalises: r.qtd_analises || 0, qtdIa: r.qtd_ia || 0, criadoPorNome: r.criado_por_nome || '',
+      natureza: r.natureza || null, tipificacaoId: r.tipificacao_id == null ? null : r.tipificacao_id, dados: r.dados || {},
+      latitude: r.latitude == null ? null : Number(r.latitude), longitude: r.longitude == null ? null : Number(r.longitude) };
   }
   function limparBusca(s) { return String(s || '').replace(/[,()%*\\"']/g, ' ').trim(); }
   function inicioPeriodo(p) {
@@ -101,12 +107,13 @@
         return api.perfil(r.data.user);
       },
       async sair() { var c = await lib(); await c.auth.signOut(); },
-      async tipos() {
+      // Tipificação (natureza > tipo > subtipo) e os formulários que cada combinação abre. Vem do banco: tabelas tipificacao e formularios.
+      async tipificacao() {
         var c = await lib();
-        var t = ok(await c.from('tipos_ocorrencia').select('nome').eq('ativo', true).order('nome'));
-        var s = ok(await c.from('subtipos_ocorrencia').select('tipo,nome').eq('ativo', true).order('nome'));
-        var sub = {}; s.forEach(function (x) { (sub[x.tipo] = sub[x.tipo] || []).push(x.nome); });
-        return { tipos: t.map(function (x) { return x.nome; }), subtipos: sub };
+        var t = ok(await c.from('tipificacao').select('id,natureza,tipo,subtipo,formulario').eq('ativo', true).order('id'));
+        var f = ok(await c.from('formularios').select('codigo,nome,descricao,campos').eq('ativo', true));
+        var fm = {}; f.forEach(function (x) { fm[x.codigo] = x; });
+        return { linhas: t.filter(function (x) { return fm[x.formulario]; }), formularios: fm };
       },
       async listarEventos(f) { return listar('v_fila_eventos', f, evento, ['local', 'descricao', 'numero_formatado', 'criado_por_nome']); },
       async listarOcorrencias(f) { return listar('v_fila_ocorrencias', f, ocorrencia, ['local', 'descricao', 'numero_formatado', 'tipo', 'subtipo', 'evento_numero_formatado']); },
@@ -144,12 +151,13 @@
         var r = await Promise.all([cont(base().eq('status', 'ag_classificacao')), cont(base().eq('status', 'em_andamento')), cont(base().eq('status', 'concluido').gte('concluido_em', hoje))]);
         return { agClassificacao: r[0], emAndamento: r[1], concluidasHoje: r[2] };
       },
-      async triarCriminal(a) {
+      // Triagem: uma só função no banco. Natureza CRIMINAL vira ocorrência; as demais são finalizadas pela central.
+      async triar(a) {
         var c = await lib();
-        ok(await c.rpc('triar_evento_criminal', { p_evento_id: a.eventoId, p_tipo: a.tipo, p_subtipo: a.subtipo || null,
-          p_forma: a.forma || null, p_fato_em: new Date(a.fatoEm).toISOString(), p_analise_mesa: a.analiseMesa || null }));
+        var r = ok(await c.rpc('triar_evento', { p_evento_id: a.eventoId, p_tipificacao_id: a.tipificacaoId, p_dados: a.dados || {}, p_forma: a.forma || null,
+          p_fato_em: a.fatoEm ? new Date(a.fatoEm).toISOString() : null, p_analise_mesa: a.analiseMesa || null, p_observacao: a.observacao || null }));
+        return { ocorrenciaId: (r && r.ocorrencia_id) || null };
       },
-      async finalizar(a) { var c = await lib(); ok(await c.rpc('finalizar_evento', { p_evento_id: a.eventoId, p_categoria: a.categoria, p_observacao: a.observacao })); },
       async adicionarAnalise(a) { var c = await lib(); ok(await c.rpc('adicionar_analise', { p_ocorrencia_id: a.ocorrenciaId, p_texto: a.texto })); },
       async usuarioId() { var c = await lib(); var r = ok(await c.auth.getSession()); return r.session ? r.session.user.id : null; },
       offline: function () { return false; },
@@ -227,8 +235,27 @@
   function criarDemo() {
     var H = 3600000, M = 60000, agora = Date.now();
     var seq = { evento: {}, ocorrencia: {} };
-    var TIPOS = ['ABERTURA', 'ACIDENTE', 'APREENSÃO', 'ATAQUE A FUNCIONÁRIOS E COLABORADORES', 'ATAQUE ÀS EQUIPES DE SEGURANÇA', 'CABOS', 'DANO', 'PREVENÇÃO'];
-    var SUB = { 'APREENSÃO': ['CARGA/GRÃOS', 'COMBUSTÍVEL', 'MATERIAL LOGÍSTICO', 'PEÇAS DA COMPOSIÇÃO', 'MATERIAL DE FIXAÇÃO DE TRILHO', 'DOCUMENTOS'] };
+    var NI = 'NÃO INFORMADO', TIPIF = window.TIPIFICACAO_DEMO || { linhas: [], formularios: {} }, MINUTAS = window.MINUTAS_DEMO || [];
+    function porId(id) { for (var i = 0; i < TIPIF.linhas.length; i++) if (TIPIF.linhas[i][0] === id) return TIPIF.linhas[i]; return null; }
+    function TP(n, t, st) { for (var i = 0; i < TIPIF.linhas.length; i++) { var l = TIPIF.linhas[i]; if (l[1] === n && l[2] === t && l[3] === st) return l[0]; } throw new Error('tipificação da demonstração não encontrada: ' + [n, t, st].join(' > ')); }
+    // Mesmas regras do banco (validar_dados_formulario), com as mesmas mensagens.
+    function validarDados(campos, dados) {
+      dados = dados || {}; var ok = {}, perm = campos.map(function (c) { return c.chave; });
+      Object.keys(dados).forEach(function (k) { if (perm.indexOf(k) < 0) falha('dados_invalidos', 'Campo que não existe neste formulário: ' + k.slice(0, 40)); });
+      campos.forEach(function (c) {
+        var t = String(dados[c.chave] == null ? '' : dados[c.chave]).trim();
+        if (!t) { if (c.obrigatorio) falha('dados_incompletos', 'Preencha o campo: ' + c.rotulo + '.'); return; }
+        var r = c.rotulo;
+        if (c.tipo === 'numero' && !/^\d{1,9}$/.test(t)) falha('dados_invalidos', r + ': informe só números.');
+        else if (c.tipo === 'km' && !/^\d{1,4}\+\d{3}$/.test(t)) falha('dados_invalidos', r + ': use o formato 115+500.');
+        else if (c.tipo === 'hora' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) falha('dados_invalidos', r + ': use o formato HH:MM.');
+        else if (c.tipo === 'sim_nao' && ['sim', 'nao'].indexOf(t) < 0) falha('dados_invalidos', r + ': escolha Sim ou Não.');
+        else if (c.tipo === 'select' && (c.opcoes || []).indexOf(t) < 0) falha('dados_invalidos', r + ': escolha uma das opções da lista.');
+        else if ((c.tipo === 'texto' || c.tipo === 'textarea') && t.length > (c.max || (c.tipo === 'texto' ? 200 : 2000))) falha('dados_invalidos', r + ': texto longo demais.');
+        ok[c.chave] = t;
+      });
+      return ok;
+    }
     var usuario = { nome: 'Operador (demonstração)', email: 'demo@exemplo.com', perfil: 'admin' };
     var eventos = [], ocorrencias = [], analises = [], atraso = 180;
     function num(tipo, ts) { var a = new Date(ts).getFullYear(); seq[tipo][a] = (seq[tipo][a] || 0) + 1; return { ano: a, n: seq[tipo][a], txt: ('000' + seq[tipo][a]).slice(-4) + ' / ' + a }; }
@@ -236,59 +263,72 @@
     function novoEvento(local, desc, atras, por, nf) {
       var t = agora - atras, nm = num('evento', t);
       var e = { id: 'ev' + (eventos.length + 1), numero: nm.txt, local: local, descricao: desc, status: 'aguardando', criadoEm: t, concluidoEm: null,
-        criadoPorNome: por, triagemCategoria: null, triagemObservacao: '', triagemEm: null, ocorrenciaId: null, nFotos: nf || 0 };
+        criadoPorNome: por, triagemCategoria: null, triagemObservacao: '', triagemEm: null, ocorrenciaId: null, nFotos: nf || 0,
+        tipificacaoId: null, triagemDados: null, tipifNatureza: null, tipifTipo: '', tipifSubtipo: '' };
       eventos.push(e); return e;
     }
     var simOff = false, clientes = {};
     function concluir(e, quando) { e.status = 'concluido'; e.concluidoEm = agora - quando; e.triagemEm = e.concluidoEm; }
+    var CAT = { criminal: 'criminal', mecanica: 'mecanico', social: 'social', natural: 'natural' };
+    // registra no evento a tipificação e os dados do formulário usados na triagem
+    function tipificar(e, id, dados, obs) {
+      var l = porId(id); e.tipificacaoId = id; e.tipifNatureza = l[1]; e.tipifTipo = l[2]; e.tipifSubtipo = l[3]; e.triagemDados = dados || {}; e.triagemCategoria = CAT[l[1]];
+      if (obs) e.triagemObservacao = obs;
+    }
     function novaOcorrencia(e, o) {
       var t = e.concluidoEm || agora, nm = num('ocorrencia', t);
       var x = Object.assign({ id: 'oc' + (ocorrencias.length + 1), numero: nm.txt, eventoId: e.id, eventoNumero: e.numero, local: e.local, descricao: e.descricao,
         subtipo: '', forma: null, fatoEm: e.criadoEm, analiseMesa: '', status: 'ag_classificacao', boletimExiste: null, boletimNumero: '',
-        classificacao: null, classificadoEm: null, criadoEm: t, concluidoEm: null, criadoPorNome: usuario.nome }, o);
+        classificacao: null, classificadoEm: null, criadoEm: t, concluidoEm: null, criadoPorNome: usuario.nome, natureza: 'criminal', tipificacaoId: null, dados: {},
+        latitude: e.latitude == null ? null : e.latitude, longitude: e.longitude == null ? null : e.longitude }, o);
+      if (x.tp) { var l = porId(x.tp); x.tipo = l[2]; x.subtipo = l[3]; x.natureza = l[1]; x.tipificacaoId = x.tp; delete x.tp; }
       ocorrencias.push(x); e.ocorrenciaId = x.id; return x;
     }
-    // semente
+    // semente (mesma tipificação do banco: natureza > tipo > subtipo)
     var e1 = novoEvento('Trecho 0, km 89+900', 'Cabos cortados entre dois vagões de uma composição parada. Porta do armário elétrico da locomotiva aberta. Sem pessoas no local.', 9 * H + 12 * M, 'Marcos Lima', 3);
     novoEvento('Pátio de Paratinga', 'Material de fixação de trilho encontrado na faixa de domínio, próximo à linha 2.', 3 * H + 50 * M, 'Paula Reis', 2);
     var e3 = novoEvento('Passagem em nível, km 14+841', 'Cancela quebrada por veículo. Condutor deixou o local. Sem feridos.', 35 * M, usuario.nome, 1); e3.latitude = -23.9608; e3.longitude = -46.3336;
     novoEvento('ZLI-Limeira, km 103+200', 'Pessoas na via férrea próximo ao cruzamento, retiradas pela equipe de segurança.', 1 * H + 40 * M, 'Paula Reis', 0);
     novoEvento('Santos, km 14+000', 'Vazamento de óleo na via, aproximadamente 2 m².', 30 * H + 5 * M, 'Marcos Lima', 2);
     novoEvento('ZKE-Canguera, km 78+900', 'Alarme de intrusão disparado no abrigo de equipamentos.', 14 * M, usuario.nome, 0);
-    var e7 = novoEvento('ZWU-Acaraú', 'Furto de cabos de sinalização. Equipe de segurança acionada.', 31 * H, 'Marcos Lima', 2); concluir(e7, 29 * H);
-    e7.triagemCategoria = 'criminal';
-    var o1 = novaOcorrencia(e7, { tipo: 'CABOS', forma: 'flagrante', fatoEm: agora - 31 * H, analiseMesa: 'Equipe de segurança acionada. Local isolado.', status: 'em_andamento', criadoEm: agora - 29 * H });
+    // triagens já concluídas pela central (cada uma com tipificação e dados do formulário)
+    function caso(local, desc, regH, tpId, forma, o, dados) {
+      var e = novoEvento(local, desc, regH * H, 'Marcos Lima', 1); concluir(e, (regH - 0.5) * H); tipificar(e, tpId, dados);
+      return novaOcorrencia(e, Object.assign({ tp: tpId, forma: forma, dados: dados || {}, fatoEm: agora - regH * H, criadoEm: agora - (regH - 0.5) * H }, o || {}));
+    }
+    var o1 = caso('ZWU-Acaraú', 'Furto de cabos de sinalização. Equipe de segurança acionada.', 31, TP('criminal', 'FURTO', 'CABOS'), 'flagrante',
+      { analiseMesa: 'Equipe de segurança acionada. Local isolado.', status: 'em_andamento' }, { km: '88+200', empresa: 'RUMO', ativo_afetado: 'cabos de sinalização', sb: 'ZWU' });
     analises.push({ ocorrenciaId: o1.id, texto: 'Local isolado, sem testemunhas. Registro de imagens solicitado.', em: agora - 28 * H, autor: 'Operador Central' });
     var e8 = novoEvento('TGR-Agrenco', 'Desgaste excessivo na roda de um vagão.', 50 * H, 'Paula Reis', 1); concluir(e8, 47 * H);
-    e8.triagemCategoria = 'mecanico'; e8.triagemObservacao = 'Vagão encaminhado para a manutenção da oficina.';
-    var e9 = novoEvento('Trecho 0', 'Apreensão de material de fixação de trilho.', 75 * H, 'Marcos Lima', 1); concluir(e9, 70 * H); e9.triagemCategoria = 'criminal';
-    var o2 = novaOcorrencia(e9, { tipo: 'APREENSÃO', subtipo: 'MATERIAL DE FIXAÇÃO DE TRILHO', forma: 'solicitacao', fatoEm: agora - 75 * H, status: 'concluido',
-      boletimExiste: false, classificacao: 'prevencao', classificadoEm: agora - 60 * H, concluidoEm: agora - 59 * H, criadoEm: agora - 70 * H });
+    tipificar(e8, TP('mecanica', 'MANUTENÇÃO', 'MECÂNICA'), { km: '320+100', ativo_afetado: 'roda de vagão' }, 'Vagão encaminhado para a manutenção da oficina.');
+    var o2 = caso('Trecho 0', 'Apreensão de material de fixação de trilho.', 75, TP('criminal', 'APREENSÃO', 'MATERIAL DE FIXAÇÃO DE TRILHO'), 'solicitacao',
+      { status: 'concluido', boletimExiste: false, classificacao: 'prevencao', classificadoEm: agora - 60 * H, concluidoEm: agora - 59 * H }, { km: '0+500', material_localizado: 'material de fixação de trilho' });
     analises.push({ ocorrenciaId: o2.id, texto: 'Material recolhido e entregue à equipe de manutenção.', em: agora - 69 * H, autor: 'Operador Central' });
-    var e10 = novoEvento('ZPT-Paratinga', 'Dano em cancela de passagem.', 6 * H, usuario.nome, 0); concluir(e10, 5 * H); e10.triagemCategoria = 'criminal';
-    novaOcorrencia(e10, { tipo: 'DANO', forma: 'solicitacao', fatoEm: agora - 6 * H, criadoEm: agora - 5 * H });
+    caso('ZPT-Paratinga', 'Dano em cancela de passagem.', 6, TP('criminal', 'DANO', 'INSTALAÇÕES'), 'solicitacao', {}, { km: '115+500', sb: 'ZPT' }).criadoPorNome = usuario.nome;
+    eventos[eventos.length - 1].criadoPorNome = usuario.nome;
     var e11 = novoEvento('Trecho 3', 'Árvore caída sobre a via após temporal.', 26 * H, 'Marcos Lima', 1); concluir(e11, 24 * H);
-    e11.triagemCategoria = 'natural'; e11.triagemObservacao = 'Árvore removida pela equipe de via permanente.';
+    tipificar(e11, TP('natural', 'OBSTRUÇÃO DE VIA', 'DESASTRE NATURAL'), { km: '180+000', causa: 'árvore caída após temporal' }, 'Árvore removida pela equipe de via permanente.');
     var e12 = novoEvento('ZVP-Votuporanga', 'Conflito com morador na faixa de domínio.', 20 * H, 'Paula Reis', 0); concluir(e12, 19 * H);
-    e12.triagemCategoria = 'social'; e12.triagemObservacao = 'Morador orientado; ocorrência registrada no livro da equipe.';
+    tipificar(e12, TP('social', 'PREVENÇÃO', 'INDIVÍDUO NA VIA'), { km: '60+300', quantidade: '1', autoridade_acionada: 'nao' }, 'Morador orientado; ocorrência registrada no livro da equipe.');
     var e13 = novoEvento('ZJP-Jacauna', 'Hot box detectado em vagão, trem retido.', 12 * H, 'Marcos Lima', 1); concluir(e13, 11 * H);
-    e13.triagemCategoria = 'mecanico'; e13.triagemObservacao = 'Vagão retirado da composição.';
-
-    // mais casos para a visão da inteligência (cada um nasce de um evento criminal)
-    function caso(local, desc, regH, tipo, sub, forma, o) {
-      var e = novoEvento(local, desc, regH * H, 'Marcos Lima', 1); concluir(e, (regH - 0.5) * H); e.triagemCategoria = 'criminal';
-      var x = novaOcorrencia(e, Object.assign({ tipo: tipo, subtipo: sub || '', forma: forma, fatoEm: agora - regH * H, criadoEm: agora - (regH - 0.5) * H }, o || {})); return x;
-    }
-    caso('ZJP-Jacauna, km 51+200', 'Cabos de sinalização subtraídos em trecho de 30 m. Sem testemunhas.', 2, 'CABOS', '', 'flagrante');
-    var c5 = caso('Passagem em nível, km 22+100', 'Colisão de caminhão com composição vazia. Condutor ferido levado ao pronto-socorro. Sem vazamentos.', 8, 'ACIDENTE', '', 'solicitacao', { status: 'em_andamento', boletimExiste: true, boletimNumero: 'BO 457/2026', analiseMesa: 'SAMU acionado, via interditada por 40 min.' });
+    tipificar(e13, TP('mecanica', 'MANUTENÇÃO', 'MECÂNICA'), { km: '51+000', ativo_afetado: 'rolamento de vagão (hot box)' }, 'Vagão retirado da composição.');
+    // mais ocorrências criminais para a visão da inteligência
+    caso('ZJP-Jacauna, km 51+200', 'Cabos de sinalização subtraídos em trecho de 30 m. Sem testemunhas.', 2, TP('criminal', 'FURTO', 'CABOS'), 'flagrante', {}, { km: '51+200', ativo_afetado: 'cabos de sinalização', sb: 'ZJP' });
+    var c5 = caso('Passagem em nível, km 22+100', 'Locomotiva parada foi abordada por homens armados e teve combustível retirado dos tanques. Maquinista sem ferimentos.', 8, TP('criminal', 'ROUBO', 'COMBUSTÍVEL'), 'solicitacao',
+      { status: 'em_andamento', boletimExiste: true, boletimNumero: 'BO 457/2026', analiseMesa: 'Polícia acionada. Via liberada em 40 min.' }, { km: '22+100', empresa: 'RUMO', prefixo: 'T55', locomotiva: '9001', ativo_afetado: 'combustível diesel' });
     analises.push({ ocorrenciaId: c5.id, texto: 'Boletim registrado pelo condutor. Aguardando laudo da perícia.', em: agora - 6 * H, autor: 'Operador Central' });
-    caso('ZSD-Santa Adélia', 'Ataque a equipe de segurança com pedras durante ronda. Dois vigilantes com escoriações.', 20, 'ATAQUE ÀS EQUIPES DE SEGURANÇA', '', 'flagrante');
-    var c8 = caso('Trecho 3, km 120+000', 'Porta de abrigo de equipamentos arrombada. Itens não conferidos.', 120, 'ABERTURA', '', 'denuncia', { status: 'concluido', boletimExiste: false, classificacao: 'social', classificadoEm: agora - 100 * H, concluidoEm: agora - 99 * H });
+    caso('ZSD-Santa Adélia', 'Ataque a equipe de segurança com pedras durante ronda. Dois vigilantes com escoriações.', 20, TP('criminal', 'ATAQUE ÀS EQUIPES DE SEGURANÇA', 'AGRESSÃO'), 'flagrante', {}, { km: '210+000', vitimas: '2', lesao: 'LESÃO LEVE' });
+    var c8 = caso('Trecho 3, km 120+000', 'Porta de abrigo de equipamentos arrombada. Itens não conferidos.', 120, TP('criminal', 'DANO', 'DEPREDAÇÃO'), 'denuncia',
+      { status: 'concluido', boletimExiste: false, classificacao: 'social', classificadoEm: agora - 100 * H, concluidoEm: agora - 99 * H }, { km: '120+000' });
     analises.push({ ocorrenciaId: c8.id, texto: 'Nada subtraído. Fechadura trocada.', em: agora - 110 * H, autor: 'Operador Central' });
-    caso('ZMA-Matão, km 42', 'Furto de cabos de energia do desvio ferroviário.', 200, 'CABOS', '', 'flagrante', { status: 'concluido', boletimExiste: true, boletimNumero: 'BO 311/2026', classificacao: 'criminal', classificadoEm: agora - 180 * H, concluidoEm: agora - 175 * H });
-    caso('Santos, km 14+000', 'Combustível retirado de tanque de locomotiva parada no pátio.', 280, 'APREENSÃO', 'COMBUSTÍVEL', 'flagrante', { status: 'concluido', boletimExiste: true, boletimNumero: 'BO 288/2026', classificacao: 'criminal', classificadoEm: agora - 260 * H, concluidoEm: agora - 255 * H });
-    caso('ZVP-Votuporanga', 'Cancela danificada por veículo de terceiros.', 330, 'DANO', '', 'solicitacao', { status: 'concluido', boletimExiste: false, classificacao: 'mecanica', classificadoEm: agora - 300 * H, concluidoEm: agora - 290 * H });
-    caso('Trecho 0', 'Apreensão de material de fixação de trilho com sucateiro.', 400, 'APREENSÃO', 'MATERIAL DE FIXAÇÃO DE TRILHO', 'solicitacao', { status: 'concluido', boletimExiste: true, boletimNumero: 'BO 244/2026', classificacao: 'criminal', classificadoEm: agora - 380 * H, concluidoEm: agora - 370 * H });
+    caso('ZMA-Matão, km 42', 'Furto de cabos de energia do desvio ferroviário.', 200, TP('criminal', 'FURTO', 'CABOS'), 'flagrante',
+      { status: 'concluido', boletimExiste: true, boletimNumero: 'BO 311/2026', classificacao: 'criminal', classificadoEm: agora - 180 * H, concluidoEm: agora - 175 * H }, { km: '42+000', ativo_afetado: 'cabos de energia' });
+    caso('Santos, km 14+000', 'Combustível retirado de tanque de locomotiva parada no pátio.', 280, TP('criminal', 'APREENSÃO', 'COMBUSTÍVEL'), 'flagrante',
+      { status: 'concluido', boletimExiste: true, boletimNumero: 'BO 288/2026', classificacao: 'criminal', classificadoEm: agora - 260 * H, concluidoEm: agora - 255 * H }, { km: '14+000', material_localizado: 'combustível', recipientes: '10', tipo_recipiente: 'GALÕES' });
+    caso('ZVP-Votuporanga', 'Cancela danificada por veículo de terceiros.', 330, TP('criminal', 'DANO', 'INSTALAÇÕES'), 'solicitacao',
+      { status: 'concluido', boletimExiste: false, classificacao: 'mecanica', classificadoEm: agora - 300 * H, concluidoEm: agora - 290 * H }, { km: '100+500' });
+    caso('Trecho 0', 'Apreensão de material de fixação de trilho com sucateiro.', 400, TP('criminal', 'APREENSÃO', 'MATERIAL DE FIXAÇÃO DE TRILHO'), 'solicitacao',
+      { status: 'concluido', boletimExiste: true, boletimNumero: 'BO 244/2026', classificacao: 'criminal', classificadoEm: agora - 380 * H, concluidoEm: agora - 370 * H }, { km: '0+800', material_localizado: 'material de fixação de trilho' });
     var iaLista = [];
 
     function lat(v) { return new Promise(function (r) { setTimeout(function () { r(v); }, atraso); }); }
@@ -311,28 +351,60 @@
       return r;
     }
     function pagina(r, f, mapa) { var i = (f.pagina - 1) * f.porPagina; return { linhas: r.slice(i, i + f.porPagina).map(mapa), total: r.length }; }
-    function falha(cod) { var e = new Error(cod); throw erro(e); }
-    // Simulação simples só para mostrar a tela. NÃO é IA e não deve ser usada como orientação jurídica.
-    function simularIA(o, an) {
-      var t = [o.descricao, o.analiseMesa].concat(an.map(function (x) { return x.texto; })).join(' '), falta = [];
-      if (!/km\s*\d|\d+\+\d+/i.test(o.local + ' ' + t)) falta.push('km');
-      if (!/composi[cç][aã]o|vag[aã]o|locomotiva/i.test(t)) falta.push('composição ou vagão');
-      if (!/matr[ií]cula|\bRE\s?\d|nome/i.test(t)) falta.push('identificação das pessoas');
-      var nota = Math.max(1, Math.min(10, 4 + Math.floor(t.length / 70) - falta.length * 1)), semBo = ['PREVENÇÃO', 'ABERTURA', 'ACIDENTE'].indexOf(o.tipo) >= 0;
-      var art = { CABOS: 'Art. 155, caput (furto)', DANO: 'Art. 163 (dano)', 'APREENSÃO': 'Art. 155 ou Art. 180, conforme a origem do material', 'ATAQUE ÀS EQUIPES DE SEGURANÇA': 'Art. 129 (lesão corporal)' }[o.tipo] || 'NÃO APLICÁVEL';
-      var minuta = semBo ? '' : 'Na qualidade de representante da equipe de segurança da empresa RUMO, venho comunicar ' + o.tipo.toLowerCase() + (o.subtipo ? ' (' + o.subtipo.toLowerCase() + ')' : '') + ' ocorrido em ' + o.local + '. ' + o.descricao + ' Km: ' + (falta.indexOf('km') >= 0 ? '[NÃO INFORMADO]' : 'conforme o local') + '. Composição: ' + (falta.indexOf('composição ou vagão') >= 0 ? '[NÃO INFORMADO]' : 'conforme o registro') + '. Solicito o registro do boletim para as providências cabíveis.';
-      return { qualidade: { nota: nota, justificativa: falta.length ? 'Faltam no registro: ' + falta.join(', ') + '.' : 'Registro com local, fato e identificação suficientes.' },
-        viabilidade: { status: semBo ? 'SEM BO APLICÁVEL' : 'VIÁVEL PARA BO', justificativa: semBo ? 'O tipo registrado não configura fato que exija boletim.' : 'Há fato material descrito no registro.' },
-        tipificacao: { artigo: semBo ? 'NÃO APLICÁVEL' : art, fundamento: 'Simulação do modo demonstração, sem IA real. Não use como orientação jurídica.' },
-        minuta: minuta.slice(0, 1200), naoInformado: falta };
+    function falha(cod, hint) { var e = new Error(cod); if (hint) e.hint = hint; throw erro(e); }
+    // SIMULAÇÃO da cadeia dos 3 agentes, só para mostrar a tela. NÃO é IA e não deve ser usada como orientação jurídica.
+    // Segue as mesmas regras do sistema real: viabilidade barra os agentes 2 e 3, a minuta vem do cadastro e as verificações são conferidas.
+    var MAPA_MINUTA = { 'FURTO/CABOS': 4, 'FURTO/COMBUSTÍVEL': 6, 'DANO/CORTE DE MANGUEIRA': 2, 'DESENGATE': 3, 'ABERTURA': 1, 'APREENSÃO': 5 };
+    var TIPO_REL = { 'ATAQUE ÀS EQUIPES DE SEGURANÇA': 'ATAQUE', 'ATAQUES A FUNCIONÁRIOS E COLABORADORES': 'ATAQUE', ABERTURA: 'ABERTURA', ACIDENTE: 'ACIDENTE', DANO: 'DANO', FURTO: 'FURTO', 'PREVENÇÃO': 'PREVENÇÃO', DESENGATE: 'DESENGATE' };
+    var MESES = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+    function p2(n) { return (n < 10 ? '0' : '') + n; }
+    function preencherMinuta(t, v) {
+      var tira = [[' [EMPRESA]', v.empresa], [' de prefixo [PREFIXO]', v.prefixo], [', na altura do km [KM]', v.km], [' nas proximidades do km [KM] da via férrea', v.km]];
+      tira.forEach(function (x) { if (!x[1] || x[1] === NI) t = t.replace(x[0], x[0] === ' nas proximidades do km [KM] da via férrea' ? ' nas proximidades da via férrea' : ''); });
+      var m = { EMPRESA: v.empresa, PREFIXO: v.prefixo, KM: v.km, 'VAGÕES': v.vagoes, VAGAO: v.vagoes, 'ATIVO AFETADO': v.ativo, 'MATERIAL LOCALIZADO': v.ativo };
+      return t.replace(/\[([^\]]+)\]/g, function (_, k) { return m[k] && m[k] !== NI ? m[k] : ''; }).replace(/\s+([,.])/g, '$1').replace(/\s{2,}/g, ' ');
     }
-
+    function verificar(parecer, minuta) {
+      var frases = function (x) { return x.trim().split(/(?<=[.!?])\s+/).filter(Boolean); }, modus = frases(minuta).filter(function (x) { return /modus operandi/i.test(x); }), n = Array.from(parecer).length;
+      return [['Até 1.200 caracteres', n <= 1200], ['Sem colchetes nem campos em aberto', !/[\[\]]/.test(parecer)], ['Abertura institucional preservada', parecer.slice(0, 60) === minuta.slice(0, 60)],
+        ['Encerramento institucional preservado', parecer.endsWith(frases(minuta).pop())], ['Bloco de modus operandi preservado', modus.length > 0 && modus.every(function (x) { return parecer.indexOf(x) >= 0; })],
+        ['Sem termos proibidos para o fato atual', true], ['Sem siglas ou códigos internos', true], ['Sem data nem horário', !/\b\d{1,2}\s?(:|h)\s?\d{2}\b/.test(parecer)], ['Sem identificação de pessoas', true], ['Sem peso nem volume do material', !/\d\s?(litros?|kg)\b/i.test(parecer)]]
+        .map(function (x) { return { regra: x[0], ok: x[1], detalhe: x[1] ? '' : 'conferir' }; });
+    }
+    function simularCadeia(o, an) {
+      var d = o.dados || {}, V = function (k) { return d[k] ? String(d[k]) : NI; }, dt = new Date(o.fatoEm), num = o.numero.split(' / ');
+      var falta = ['km', 'prefixo', 'composicao', 'vagoes', 'locomotiva', 'empresa'].filter(function (k) { return V(k) === NI; });
+      var nota = Math.max(1, Math.min(10, 2 + Object.keys(d).length + (o.descricao.length > 60 ? 1 : 0)));
+      var viavel = o.natureza === 'criminal' && ['FURTO', 'ROUBO', 'DANO', 'ABERTURA', 'DESENGATE', 'APREENSÃO', 'RECEPTAÇÃO'].indexOf(o.tipo) >= 0;
+      var ativo = V('ativo_afetado') !== NI ? V('ativo_afetado') : V('material_localizado');
+      var uf = V('uf'), tr = V('trecho');
+      var a1 = { dados: { empresa: V('empresa'), prefixo: V('prefixo'), composicao: V('composicao'), vagoes: V('vagoes'), locomotiva: V('locomotiva'), km: V('km'), tipo: o.tipo, subtipo: o.subtipo || NI, ativo_afetado: ativo, fato_constatado: o.descricao.slice(0, 160) },
+        qualidade: { nota: nota, justificativa: falta.length ? 'Faltam no registro: ' + falta.join(', ') + '.' : 'Registro com km, composição e ativo claros.' },
+        viabilidade: { status: viavel ? 'VIÁVEL PARA BO' : 'SEM BO APLICÁVEL', justificativa: viavel ? 'Há fato material constatado no registro.' : 'O fato registrado não se enquadra na definição de viabilidade do agente (dano, subtração, abertura, desengate ou material localizado).' },
+        relatorio: { nr_performance: parseInt(num[0], 10) + '/' + num[1], mes: MESES[dt.getMonth()], data: p2(dt.getDate()) + '/' + p2(dt.getMonth() + 1) + '/' + dt.getFullYear(), hora: p2(dt.getHours()) + ':' + p2(dt.getMinutes()),
+          cidade: V('cidade').toUpperCase(), uf: uf, trecho: tr, sb: V('sb'), km: V('km'), composicao: V('prefixo'), empresa: V('empresa'), maquinista: V('maquinista').split(' ')[0].toUpperCase(), re: V('re_maquinista'),
+          coordenadas: o.latitude != null ? o.latitude.toFixed(4) + ', ' + o.longitude.toFixed(4) : NI, natureza: o.natureza === 'criminal' ? 'CRIMINAL' : (o.natureza === 'social' ? 'SOCIAL' : NI), tipo: TIPO_REL[o.tipo] || NI,
+          autoria: V('autoria') === 'CONHECIDA' ? 'CONHECIDA' : 'DESCONHECIDA', hora_inicio: V('hora_inicio'), hora_final: V('hora_final'), thp_total: NI } };
+      var r = { simulacao: true, versoes: { agentes: { '1': 1, '2': 1, '3': 1 }, minuta: null }, agente1: a1, agente2: null, agente3: null, verificacoes: [] };
+      var fim3 = { encerrado: true, mensagem: 'SEM PARECER — Ocorrência não elegível para geração de BO.', parecer: null, caracteres: null, status: null, camposNaoLocalizados: [] };
+      if (!viavel) { r.agente2 = { encerrado: true, mensagem: 'ENCERRADO — Ocorrência classificada como sem viabilidade de BO. Nenhuma tipificação ou minuta aplicável.', tipificacao: null, minuta: null }; r.agente3 = fim3; return r; }
+      var art = { FURTO: 'Art. 155 do Código Penal (furto)', ROUBO: 'Art. 157 do Código Penal (roubo)', DANO: 'Art. 163 do Código Penal (dano)', 'APREENSÃO': 'Art. 180 do Código Penal (receptação), se confirmada a origem', ABERTURA: 'Art. 155 do Código Penal (furto)', DESENGATE: 'Art. 262 do Código Penal (perigo de desastre ferroviário)', 'RECEPTAÇÃO': 'Art. 180 do Código Penal (receptação)' }[o.tipo];
+      var tip = { artigo: art + ' (simulação)', fundamento: 'Simulação do modo demonstração, sem IA real. Não use como orientação jurídica.' };
+      var n = MAPA_MINUTA[o.tipo + '/' + o.subtipo] || MAPA_MINUTA[o.tipo], mn = MINUTAS.filter(function (m) { return m.numero === n; })[0];
+      if (!mn) { r.agente2 = { encerrado: true, mensagem: 'MINUTA NÃO APLICÁVEL', tipificacao: tip, minuta: null }; r.agente3 = fim3; return r; }
+      r.agente2 = { encerrado: false, mensagem: null, tipificacao: tip, minuta: { numero: mn.numero, nome: mn.nome, versao: 1, justificativa: 'Minuta mais próxima do tipo e subtipo registrados.' } }; r.versoes.minuta = { numero: mn.numero, versao: 1 };
+      var parecer = preencherMinuta(mn.texto, { empresa: V('empresa'), prefixo: V('prefixo'), km: V('km'), vagoes: V('vagoes'), ativo: ativo });
+      var ver = verificar(parecer, mn.texto), n3 = Array.from(parecer).length;
+      r.agente3 = { encerrado: false, mensagem: null, parecer: parecer, caracteres: n3, status: ver.every(function (x) { return x.ok; }) ? 'DENTRO DO LIMITE' : 'ATENÇÃO: REVISAR MANUALMENTE',
+        camposNaoLocalizados: ['empresa', 'prefixo', 'km', 'vagoes', 'ativo_afetado'].filter(function (k) { return V(k === 'ativo_afetado' ? 'ativo_afetado' : k) === NI && !(k === 'ativo_afetado' && ativo !== NI); }) };
+      r.verificacoes = ver; return r;
+    }
     var api = {
       modo: 'demo',
       iniciar: function () { return lat({ logado: true, usuario: usuario }); },
       entrar: function () { return lat({ logado: true, usuario: usuario }); },
       sair: function () { return lat(); },
-      tipos: function () { return lat({ tipos: TIPOS.slice(), subtipos: JSON.parse(JSON.stringify(SUB)) }); },
+      tipificacao: function () { return lat({ linhas: TIPIF.linhas.map(function (l) { return { id: l[0], natureza: l[1], tipo: l[2], subtipo: l[3], formulario: l[4] }; }), formularios: JSON.parse(JSON.stringify(TIPIF.formularios)) }); },
       listarEventos: function (f) { var base = f.somenteMeus ? eventos.filter(function (e) { return e.criadoPorNome === usuario.nome; }) : eventos; return lat(pagina(filtrar(base, f, ['local', 'descricao', 'numero', 'criadoPorNome'], 'concluido'), f, ev)); },
       listarOcorrencias: function (f) { return lat(pagina(filtrar(ocorrencias, f, ['local', 'descricao', 'numero', 'tipo', 'subtipo', 'eventoNumero'], 'concluido'), f, oc)); },
       detalheEvento: function (id) {
@@ -361,27 +433,23 @@
           emAndamento: ocorrencias.filter(function (o) { return o.status === 'em_andamento'; }).length,
           concluidasHoje: ocorrencias.filter(function (o) { return o.status === 'concluido' && o.concluidoEm >= hoje; }).length });
       },
-      triarCriminal: function (a) {
+      triar: function (a) {
         var e = eventos.filter(function (x) { return x.id === a.eventoId; })[0]; if (!e) falha('evento_nao_encontrado');
         if (e.status !== 'aguardando') falha('evento_ja_concluido');
-        if (TIPOS.indexOf(a.tipo) < 0) falha('tipo_invalido');
-        var subs = SUB[a.tipo];
-        if (subs && subs.indexOf(a.subtipo) < 0) falha('subtipo_invalido');
-        if (!a.fatoEm) falha('dados_incompletos');
-        var agoraT = Date.now(); e.status = 'concluido'; e.concluidoEm = agoraT; e.triagemEm = agoraT; e.triagemCategoria = 'criminal';
-        var nm = num('ocorrencia', agoraT);
-        var o = { id: 'oc' + (ocorrencias.length + 1), numero: nm.txt, eventoId: e.id, eventoNumero: e.numero, local: e.local, descricao: e.descricao, tipo: a.tipo,
-          subtipo: subs ? a.subtipo : '', forma: a.forma || null, fatoEm: a.fatoEm, analiseMesa: (a.analiseMesa || '').trim(), status: 'ag_classificacao',
-          boletimExiste: null, boletimNumero: '', classificacao: null, classificadoEm: null, criadoEm: agoraT, concluidoEm: null, criadoPorNome: usuario.nome };
-        ocorrencias.push(o); e.ocorrenciaId = o.id; return lat();
-      },
-      finalizar: function (a) {
-        var e = eventos.filter(function (x) { return x.id === a.eventoId; })[0]; if (!e) falha('evento_nao_encontrado');
-        if (a.categoria === 'criminal') falha('use_triagem_criminal');
-        if (!String(a.observacao || '').trim()) falha('dados_incompletos');
-        if (e.status !== 'aguardando') falha('evento_ja_concluido');
-        e.status = 'concluido'; e.concluidoEm = Date.now(); e.triagemEm = e.concluidoEm; e.triagemCategoria = a.categoria; e.triagemObservacao = a.observacao.trim();
-        return lat();
+        var l = porId(a.tipificacaoId); if (!l) falha('tipificacao_invalida');
+        var dados = validarDados(TIPIF.formularios[l[4]].campos, a.dados), agoraT = Date.now();
+        if (l[1] === 'criminal') {
+          if (!a.fatoEm) falha('dados_incompletos', 'Informe a data e a hora do fato.');
+          var nm = num('ocorrencia', agoraT);
+          var o = { id: 'oc' + (ocorrencias.length + 1), numero: nm.txt, eventoId: e.id, eventoNumero: e.numero, local: e.local, descricao: e.descricao, tipo: l[2], subtipo: l[3], natureza: l[1], tipificacaoId: l[0], dados: dados,
+            forma: a.forma || null, fatoEm: a.fatoEm, analiseMesa: (a.analiseMesa || '').trim(), status: 'ag_classificacao', boletimExiste: null, boletimNumero: '', classificacao: null, classificadoEm: null,
+            criadoEm: agoraT, concluidoEm: null, criadoPorNome: usuario.nome, latitude: e.latitude == null ? null : e.latitude, longitude: e.longitude == null ? null : e.longitude };
+          ocorrencias.push(o); e.ocorrenciaId = o.id; e.status = 'concluido'; e.concluidoEm = agoraT; e.triagemEm = agoraT; tipificar(e, l[0], dados);
+          return lat({ ocorrenciaId: o.id });
+        }
+        if (!String(a.observacao || '').trim()) falha('dados_incompletos', 'Descreva o que foi feito para encerrar o evento.');
+        e.status = 'concluido'; e.concluidoEm = agoraT; e.triagemEm = agoraT; tipificar(e, l[0], dados, a.observacao.trim());
+        return lat({ ocorrenciaId: null });
       },
       adicionarAnalise: function (a) {
         var o = ocorrencias.filter(function (x) { return x.id === a.ocorrenciaId; })[0]; if (!o) falha('ocorrencia_nao_encontrada');
@@ -443,7 +511,7 @@
         if (o.status === 'concluido') falha('ocorrencia_concluida');
         var ult = iaLista.filter(function (i) { return i.ocorrenciaId === o.id; }).sort(function (x, y) { return y.em - x.em; })[0];
         if (ult && Date.now() - ult.em < 15000) falha('ia_recente');
-        var res = simularIA(o, analises.filter(function (x) { return x.ocorrenciaId === o.id; })), reg = { ocorrenciaId: o.id, em: Date.now(), autor: usuario.nome, modelo: 'simulação', resultado: res };
+        var res = simularCadeia(o, analises.filter(function (x) { return x.ocorrenciaId === o.id; })), reg = { ocorrenciaId: o.id, em: Date.now(), autor: usuario.nome, modelo: 'simulação', resultado: res };
         return new Promise(function (r) { setTimeout(function () { iaLista.push(reg); r({ ok: true, ia: reg }); }, 1400); });
       },
       assinar: function (cb, estado) { if (estado) setTimeout(function () { estado(true); }, 300); return function () {}; }

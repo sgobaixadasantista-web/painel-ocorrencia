@@ -26,14 +26,19 @@ supabase/migrations/
   001_painel_ocorrencias.sql    tabelas, regras de acesso por perfil, funções do fluxo, fotos
   002_inteligencia.sql          análises de IA, indicadores e gráficos da inteligência
   003_campo.sql                 registro sem sinal (horário real, sem duplicar), GPS, contas novas inativas
-supabase/functions/analisar-ocorrencia/   função segura que chama a IA (a chave fica só no servidor)
+  004_tipificacao.sql           natureza > tipo > subtipo (156 combinações), formulários por combinação, triagem única
+  005_agentes_ia.sql            3 agentes de IA e 7 minutas do Rumo - SLA, editáveis só por admin
+supabase/dados/                 planilha de tipificação e configuração dos agentes (fonte dos dados iniciais)
+supabase/atualizar_*.sql        reaplicam a planilha e os agentes sem apagar o que você ajustou
+tools/                          gerar_tipificacao.py e gerar_agentes.py (geram os SQL e os dados da demonstração)
+js/tipificacao-demo.js minutas-demo.js   dados só do modo demonstração (no modo normal vêm do banco)supabase/functions/analisar-ocorrencia/   função segura que chama a IA (a chave fica só no servidor)
 supabase/seed_demo.sql          eventos de exemplo (opcional, só para teste)
 ```
 
 ## Como colocar no ar
 
 1. **Crie um projeto** em supabase.com.
-2. **Rode o banco:** *SQL Editor* > cole `001_painel_ocorrencias.sql` > *Run*; depois `002_inteligencia.sql`; depois `003_campo.sql`. Cada um **uma vez só**, nessa ordem.
+2. **Rode o banco:** *SQL Editor* > cole `001_painel_ocorrencias.sql` > *Run*; depois `002_inteligencia.sql`, `003_campo.sql`, `004_tipificacao.sql` e `005_agentes_ia.sql`. Cada um **uma vez só**, nessa ordem.
 3. **Crie as pessoas:** *Authentication > Users > Add user* (e-mail e senha). Toda conta nova nasce **inativa**: não abre painel nenhum até você liberar.
 4. **Libere cada pessoa e dê o perfil**, no *SQL Editor*:
    ```sql
@@ -47,11 +52,10 @@ supabase/seed_demo.sql          eventos de exemplo (opcional, só para teste)
 6. **Publique a pasta** em hospedagem de arquivos estáticos (Netlify, Vercel, GitHub Pages, servidor interno), com **HTTPS** (obrigatório para o GPS, a câmera e a abertura sem internet).
 7. **Ligue a IA (opcional, só para a inteligência).** Com a [Supabase CLI](https://supabase.com/docs/guides/cli) instalada e ligada ao projeto (`supabase link`):
    ```
-   supabase secrets set OPENAI_API_KEY=sk-proj-...
+   supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
    supabase functions deploy analisar-ocorrencia
    ```
-   Opcional: `supabase secrets set OPENAI_MODEL=<modelo>` (o padrão é `gpt-4o-mini`). Sem a chave, o botão da IA mostra "a análise por IA ainda não foi configurada" e o resto do painel funciona normalmente. A chave é obtida na plataforma da OpenAI e deve ficar somente nos segredos do Supabase.
-   A configuração em `supabase/config.toml` desativa a verificação JWT automática do gateway para essa função, necessária para permitir o preflight CORS do navegador. A própria função valida o token da sessão e o perfil `inteligencia`/`admin` antes de processar a solicitação. Faça o deploy a partir da raiz do projeto para aplicar essa configuração.
+   Opcional: `supabase secrets set ANTHROPIC_MODEL=<modelo>` (o padrão é `claude-sonnet-5-5`). Sem isso, o botão da IA mostra "a análise por IA ainda não foi configurada" e o resto do painel funciona normalmente.
 8. **(Opcional)** `supabase/seed_demo.sql` cria eventos de exemplo em ambiente de teste.
 
 Sem preencher o passo 5, o painel abre em **modo demonstração**: dados fictícios, IA simulada, nada gravado. Na demonstração, o menu da conta tem **"Simular sem sinal"**, para ver a fila offline do campo funcionando.
@@ -69,27 +73,56 @@ Sem preencher o passo 5, o painel abre em **modo demonstração**: dados fictíc
 
 **Limites a conhecer:** a fila fica no aparelho e no navegador usado; limpar os dados do navegador apaga o que ainda não foi enviado. Em navegador sem armazenamento local (alguns modos anônimos), o painel avisa para não fechar a página. O app só envia enquanto está aberto (não há envio em segundo plano com a tela bloqueada).
 
-## Como a IA funciona
+## Tipificação e formulários
 
-A inteligência clica em **Analisar com IA** em uma ocorrência. A função do Supabase confere o login e o perfil (só `inteligencia` e `admin`), lê o registro com as regras de acesso da própria pessoa, pede a análise à IA e grava o resultado. A IA devolve:
+Na triagem, a central escolhe **Natureza ➜ Tipo ➜ Subtipo** (156 combinações, vindas da planilha da Rumo) e cada combinação **abre o formulário de referência** com os campos daquele caso.
 
-- **nota de qualidade do registro** (0 a 10) e justificativa;
-- **viabilidade de boletim** (viável ou sem BO aplicável);
-- **tipificação** (artigo do Código Penal, *uso interno*);
-- **minuta do boletim** (até 1.200 caracteres) e a lista do que não foi encontrado no registro.
+- **9 formulários:** composição, via, apreensão, pessoas, acidente, obstrução, manutenção, prevenção e básico. Cada combinação aponta para um deles (tabela `tipificacao`, coluna `formulario`).
+- **Campos obrigatórios:** só o km (e, na apreensão, o material localizado). O resto é opcional e fica recolhido por grupo (composição, local, estatística).
+- **Formato dos campos:** km sempre como `115+500` (a tela converte `115,500`), horas como `HH:MM`, quantidade de material **só como número de recipientes**, sem peso nem litros.
+- **Natureza criminal** cria a ocorrência para a inteligência; **mecânica, social e natural** são finalizadas pela central, com observação. Nos dois casos ficam gravados a tipificação e os dados do formulário.
+- **Para ajustar:** *Table Editor* > `formularios` (campos, em JSON) e `tipificacao` (qual formulário cada combinação abre). Cada mudança nos campos sobe a versão e registra quem mudou. Se a planilha da Rumo mudar, gere o SQL de novo com `python3 tools/gerar_tipificacao.py planilha.xlsx` e rode `supabase/atualizar_tipificacao.sql`: combinações que saírem da planilha ficam inativas, sem quebrar registros antigos.
+- A triagem passa por **uma única função do banco** (`triar_evento`), que valida o formulário. Não existe caminho para pular os campos obrigatórios.
 
-Proteções: a IA só pode usar o que está escrito no registro (o que faltar vira `NÃO INFORMADO`), o texto do registro é tratado como dado e não como instrução, a resposta é validada antes de gravar, e há no máximo uma análise a cada 15 segundos por ocorrência. **O texto da IA é uma sugestão: quem registra o boletim precisa conferir cada fato.**
+## Como a IA funciona (3 agentes em cadeia)
+
+A inteligência clica em **Analisar com IA** na ocorrência. A função do Supabase confere login e perfil (só `inteligencia` e `admin`), lê o registro com as regras de acesso da pessoa e roda os 3 agentes do Rumo - SLA:
+
+| Ordem | Agente | O que entrega |
+|---|---|---|
+| 1 | Analista de Qualidade de Registros | Dados extraídos para o boletim, nota de 0 a 10, viabilidade de BO e relatório estatístico padronizado |
+| 2 | Especialista em Tipificação Penal | Artigo do Código Penal (uso interno) e o **número** da minuta aplicável |
+| 3 | Redator Técnico de BO | Parecer final de até 1.200 caracteres, pronto para a Delegacia Digital |
+
+**Os textos dos agentes e das minutas são os do Rumo - SLA, sem alteração.** Só o formato de saída da IA foi adaptado (JSON), para o sistema conseguir ler. Ficam nas tabelas `agentes_ia` e `minutas_bo`: só o admin edita, e cada análise guarda a versão usada.
+
+O que os textos só **pediam** à IA, o sistema **confere por código**:
+- só as seções 1 a 3 do agente 1 seguem adiante; o relatório estatístico (com o nome do maquinista) nunca chega ao redator;
+- a IA escolhe o número da minuta; **o texto aprovado vem do cadastro** e nunca é reescrito por ela;
+- se o agente 1 diz "SEM BO APLICÁVEL", os agentes 2 e 3 nem rodam e nenhuma chamada de IA é gasta;
+- o parecer passa por 10 verificações feitas pelo sistema: até 1.200 caracteres (contados por código), sem colchetes, abertura e encerramento exatos, bloco de modus operandi intacto, sem termos proibidos, siglas, datas e horários, pessoas, peso e volume;
+- se uma verificação falha, o redator tenta de novo uma vez; se continuar falhando, o texto é gravado com **"ATENÇÃO: REVISAR MANUALMENTE"** e as falhas à vista;
+- o relatório estatístico tem o formato normalizado (km `120,570` vira `120+570`, valor fora do padrão vira `NÃO INFORMADO`).
+
+**O texto da IA é uma sugestão: quem registra o boletim confere cada fato.** Além disso: o texto do registro é tratado como dado, não como instrução; a resposta é validada antes de gravar; há no máximo uma análise a cada 15 segundos por ocorrência. As perguntas que dependem do jurídico e da operação estão em um documento à parte (veja a lista de perguntas entregue junto).
 
 ## Segurança (leia antes de publicar)
 
 - A chave **anon** pode ficar no navegador; a **service_role** e a chave da IA **nunca**. A chave da IA fica nos segredos da função.
 - O navegador **não grava direto nas tabelas**: toda escrita passa por funções do banco que conferem perfil e regras (por exemplo, não dá para fazer a triagem do mesmo evento duas vezes, nem alterar uma classificação).
 - Em *Authentication > Providers > Email*, **desligue "Allow new users to sign up"** se o cadastro deve ser só por convite.
+- **Tipificação, formulários, agentes e minutas** só o admin edita. A IA nunca grava direto: passa pela função do banco, que confere perfil, formato e frequência.
 - **Contas novas nascem inativas.** Como o campo agora grava eventos, ninguém entra só por criar conta.
 - Fotos em bucket **privado**, por links temporários de 1 hora; cada pessoa só envia para a própria pasta e o banco recusa foto de outra pessoa. Campo vê só os eventos que registrou. Análises de IA só são lidas por inteligência e admin; o histórico de auditoria também.
 
 ## Suposições a validar com a Rumo
 
+As perguntas completas, com o que o sistema faz hoje em cada caso, estão na lista de perguntas ao jurídico e à operação. As principais:
+
+- **Textos fixos das minutas** afirmam fatos (escolta informou, patrulhamento, preservação do material) que o registro pode não conter. O sistema usa o texto aprovado sem alterar.
+- **Cobertura:** não há minuta para roubo, ataques, incêndio criminoso, receptação nem dano em instalações de via; esses casos terminam em "SEM PARECER".
+- **Natureza x classificação:** a natureza da triagem e a classificação da inteligência são tratadas como campos separados.
+- **Formulários:** os 9 formulários e os campos obrigatórios são proposta nossa, a partir dos dados que os agentes pedem.
 - **Prazos do cronômetro:** atenção após 4 h, atrasado após 24 h (`PRAZO_ATENCAO_H` e `PRAZO_CRITICO_H`, em `js/config.js`).
 - **Encerramento da ocorrência:** a Rumo não mostrou como se conclui. Aqui a inteligência conclui depois de classificar.
 - **Classificar tira a ocorrência da fila "Ag. classificação"** (passa a "Em andamento"), mesmo sem análise. No Rumo - SLA o status só mudava com a análise.
@@ -98,12 +131,12 @@ Proteções: a IA só pode usar o que está escrito no registro (o que faltar vi
 
 ## O que foi testado
 
-- **Banco (Postgres real, com as peças do Supabase simuladas):** permissões por perfil, leitura restrita, bloqueio de escrita direta, regras do fluxo, numeração, fotos, análises de IA, indicadores.
-- **Função da IA, contra o banco real:** perfil sem permissão não gasta chamadas, chave só no servidor, respostas ruins da IA não gravam nada, limite de frequência, registro com instruções maliciosas tratado como dado. A chamada à API da OpenAI foi simulada.
+- **Banco (Postgres real, com as peças do Supabase simuladas):** permissões por perfil, leitura restrita, bloqueio de escrita direta, triagem com validação dos formulários, 156 combinações, agentes e minutas (texto idêntico ao do Rumo - SLA), numeração, fotos, indicadores.
+- **Cadeia dos 3 agentes, contra o banco real (72 verificações):** ordem e entradas de cada agente, relatório estatístico que não segue adiante, texto da minuta vindo do cadastro, encerramentos, nova tentativa e "revisar manualmente", as 7 minutas preenchidas passando nas 10 verificações, erros típicos barrados. A chamada à API da Anthropic foi simulada.
 - **Painéis (navegador, modo demonstração):** os três fluxos completos, filtros, exportação, tema escuro, celular. No campo: GPS, fotos reduzidas, rascunho, fila offline com recarga da página no meio, reenvio sem duplicar, erro de validação e abertura sem internet (service worker).
 - **Camada do Supabase (cliente simulado):** consultas, funções, fotos assinadas, tempo real, login, mensagens de erro e roteamento por perfil.
 
-**Ainda não testado contra serviços reais:** o projeto Supabase de verdade (e-mail do login, tempo real ao vivo, upload de fotos), a **chamada real à API da OpenAI** e **aparelhos reais** (câmera, GPS e instalação no celular foram simulados no navegador). Antes de liberar para a equipe, configure a chave, teste com a conta de um colega e analise uma ocorrência de teste.
+**Ainda não testado contra serviços reais:** o projeto Supabase de verdade (e-mail do login, tempo real ao vivo, upload de fotos), a **chamada real à IA** e **aparelhos reais** (câmera, GPS e instalação no celular foram simulados no navegador). Antes de liberar para a equipe, teste com a conta de um colega e analise uma ocorrência de teste.
 
 ## Próximos passos naturais
 

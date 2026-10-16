@@ -2,10 +2,10 @@
    Só guarda arquivos DESTE site (tela, estilos, fontes). Nada do Supabase passa por aqui:
    os dados dos registros ficam no banco e na fila do aparelho (IndexedDB), não neste cache.
    Para forçar atualização do aplicativo em todos os aparelhos, troque o número em VERSAO. */
-var VERSAO = 'v1';
+var VERSAO = 'v2';
 var CACHE = 'security-rumo-' + VERSAO;
 var ARQUIVOS = ['./', 'index.html', 'manifest.webmanifest', 'css/tokens.css', 'css/rumo.css', 'css/app.css',
-  'js/config.js', 'js/icons.js', 'js/data.js', 'js/fila.js', 'js/campo.js', 'js/app.js',
+  'js/config.js', 'js/icons.js', 'js/tipificacao-demo.js', 'js/minutas-demo.js', 'js/data.js', 'js/fila.js', 'js/campo.js', 'js/app.js',
   'assets/logo-fundo-claro.png', 'assets/logo-fundo-escuro.png', 'assets/icon-192.png', 'assets/icon-512.png',
   'assets/fonts/Inter-400.woff2', 'assets/fonts/Inter-600.woff2', 'assets/fonts/Inter-700.woff2', 'assets/fonts/Inter-800.woff2'];
 
