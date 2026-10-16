@@ -4,7 +4,7 @@
    - NUNCA coloque a chave "service_role" aqui. */
 window.PAINEL_CONFIG = {
   SUPABASE_URL: 'https://fnqvmuvpensjofiucuty.supabase.co',        // exemplo: https://abcdefgh.supabase.co
-  SUPABASE_ANON_KEY: '',   // Supabase > Project Settings > API > anon public
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZucXZtdXZwZW5zam9maXVjdXR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1NTM2ODQsImV4cCI6MjEwNzEyOTY4NH0.dENyG5OkSjy6UoJznfaIvxujjo_IMs9-fO9aeawihi8',   // Supabase > Project Settings > API > anon public
   BUCKET: 'evidencias',    // bucket privado criado pela migração
   PRAZO_ATENCAO_H: 4,      // acima disso o evento fica em "atenção" (valor de referência, a validar com a Rumo)
   PRAZO_CRITICO_H: 24,     // acima disso o evento fica "atrasado" (valor de referência, a validar com a Rumo)
