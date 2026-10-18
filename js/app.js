@@ -523,13 +523,22 @@
   }
   function iaHtml(d) {
     var o = d.ocorrencia, ult = d.ia && d.ia[0], r = ult && ult.resultado;
-    var h = '<div class="bloco"><h3 class="sec-t">Análise por IA (3 agentes)</h3>';
+    var h = '<div class="bloco"><h3 class="sec-t">Análise por IA · OpenAI</h3>';
     if (o.status !== 'concluido') {
       h += '<div class="linha-status"><button type="button" class="r-btn r-btn-outline r-btn-sm" id="btn-ia" data-act="ia"' + (S.iaBusy ? ' disabled' : '') + '>' + ico('checklist') + (S.iaBusy ? 'Analisando…' : (r ? 'Analisar de novo' : 'Analisar com IA')) + '</button>' +
-        '<span class="r-hint" id="ia-st">' + (S.iaBusy ? 'Roda os 3 agentes em sequência. Pode levar até 1 minuto.' : '') + '</span></div><div class="r-err" id="er-ia" hidden></div>';
+        '<span class="r-hint" id="ia-st">' + (S.iaBusy ? 'A OpenAI está analisando a ocorrência. Aguarde.' : '') + '</span></div><div class="r-err" id="er-ia" hidden></div>';
     }
-    if (!r) return h + '<p class="txt" style="color:var(--rumo-muted)">Nenhuma análise por IA ainda. Os 3 agentes avaliam a qualidade do registro, indicam a tipificação e a minuta e redigem o parecer para a Delegacia Digital. Você revisa antes de usar.</p></div>';
-    if (!r.agente1) return h + '<p class="aviso">Esta análise foi feita com o formato antigo (1 agente). Use "Analisar de novo".</p></div>';
+    if (!r) return h + '<p class="txt" style="color:var(--rumo-muted)">Nenhuma análise por IA ainda. A OpenAI avalia a qualidade do registro, sugere tipificação e minuta. Você revisa antes de usar.</p></div>';
+    if (!r.agente1) {
+      h += '<div class="r-card ia-card"><p class="aviso">Análise gerada por OpenAI em ' + fmtData(ult.em) + (ult.modelo ? ' (' + esc(ult.modelo) + ')' : '') + '. Revise os fatos antes de utilizar as sugestões.</p>';
+      var titulos = { qualidade: 'Qualidade do registro', viabilidade: 'Viabilidade do boletim', tipificacao: 'Tipificação sugerida', minuta: 'Minuta sugerida', naoInformado: 'Informações não localizadas' };
+      Object.keys(titulos).forEach(function (k) {
+        var valor = r[k]; if (valor == null) return;
+        var txt = typeof valor === 'string' ? valor : JSON.stringify(valor, null, 2);
+        h += '<details class="ia-etapa" open><summary>' + titulos[k] + '</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;margin:8px 0">' + esc(txt) + '</pre></details>';
+      });
+      return h + '</div></div>';
+    }
     var a1 = r.agente1, a2 = r.agente2 || {}, a3 = r.agente3 || {}, nota = Math.max(0, Math.min(10, Number(a1.qualidade && a1.qualidade.nota) || 0)), viavel = a1.viabilidade && a1.viabilidade.status === 'VIÁVEL PARA BO';
     var v = r.versoes || {}, ver = (v.agentes ? 'Agentes v' + [v.agentes['1'], v.agentes['2'], v.agentes['3']].join(' / v') : '') + (v.minuta ? ' · minuta ' + v.minuta.numero + ' v' + v.minuta.versao : '');
     h += '<div class="r-card ia-card"><p class="aviso">Gerado por IA em ' + fmtData(ult.em) + (ult.modelo ? ' (' + esc(ult.modelo) + ')' : '') + '. ' + (r.simulacao ? '<b>Simulação do modo demonstração, sem IA real.</b> ' : '') +
