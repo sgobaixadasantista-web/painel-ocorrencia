@@ -14,10 +14,10 @@ async function refresh(){
  try{
   const sb=await getClient();
   const {data:{user}}=await sb.auth.getUser();if(!user)throw Error('Entre no painel.');
-  const {data,error}=await sb.from('veiculo_turno').select('equipe,placa,turno_chave,registrado_em,foto_placa_path,foto_odometro_path').order('registrado_em',{ascending:false}).limit(200);
+  const {data,error}=await sb.from('veiculo_turno').select('equipe,placa,odometro_km,turno_chave,registrado_em,foto_placa_path,foto_odometro_path').order('registrado_em',{ascending:false}).limit(200);
   if(error)throw error;
   const rows=data||[];
-  tbody.innerHTML=rows.map((v,i)=>'<tr><td>'+esc(v.equipe)+'</td><td>'+esc(v.placa)+'</td><td>'+esc(v.turno_chave)+'</td><td>'+esc(new Date(v.registrado_em).toLocaleString('pt-BR'))+'</td><td><button type="button" data-vehicle="'+i+'" data-photo="foto_placa_path">Placa</button> <button type="button" data-vehicle="'+i+'" data-photo="foto_odometro_path">Odômetro</button></td></tr>').join('')||'<tr><td colspan="5">Nenhum veículo registrado.</td></tr>';
+  tbody.innerHTML=rows.map((v,i)=>'<tr><td>'+esc(v.equipe)+'</td><td>'+esc(v.placa)+'</td><td>'+esc(v.odometro_km==null?'—':v.odometro_km+' km')+'</td><td>'+esc(v.turno_chave)+'</td><td>'+esc(new Date(v.registrado_em).toLocaleString('pt-BR'))+'</td><td><button type="button" data-vehicle="'+i+'" data-photo="foto_placa_path">Placa</button> <button type="button" data-vehicle="'+i+'" data-photo="foto_odometro_path">Odômetro</button></td></tr>').join('')||'<tr><td colspan="6">Nenhum veículo registrado.</td></tr>';
   tbody.onclick=async ev=>{
    const btn=ev.target.closest('[data-vehicle]');if(!btn)return;
    const item=rows[Number(btn.dataset.vehicle)];if(!item)return;
@@ -36,7 +36,7 @@ async function refresh(){
 function show(){
  if(document.getElementById('veiculos-overlay'))return;
  const root=document.createElement('div');root.id='veiculos-overlay';root.style.cssText='position:fixed;inset:0;z-index:10001;overflow:auto;background:#f4f6f8;color:#0B2942;font-family:Inter,system-ui,sans-serif';
- root.innerHTML='<header style="padding:15px 20px;display:flex;justify-content:space-between;background:#0B2942;color:white"><strong>SECURITY RUMO · Veículos no Turno</strong><button id="veiculos-voltar">Voltar ao painel</button></header><main style="max-width:1300px;margin:auto;padding:18px"><p id="veiculos-status">Carregando...</p><button id="veiculos-atualizar">Atualizar</button><div style="overflow-x:auto"><table style="width:100%;border-spacing:0 12px;text-align:left"><thead><tr><th>Equipe</th><th>Placa</th><th>Turno</th><th>Data/hora</th><th>Fotos</th></tr></thead><tbody id="veiculos-tbody"></tbody></table></div><section id="veiculos-foto"></section></main>';
+ root.innerHTML='<header style="padding:15px 20px;display:flex;justify-content:space-between;background:#0B2942;color:white"><strong>SECURITY RUMO · Veículos no Turno</strong><button id="veiculos-voltar">Voltar ao painel</button></header><main style="max-width:1300px;margin:auto;padding:18px"><p id="veiculos-status">Carregando...</p><button id="veiculos-atualizar">Atualizar</button><div style="overflow-x:auto"><table style="width:100%;border-spacing:0 12px;text-align:left"><thead><tr><th>Equipe</th><th>Placa</th><th>Odômetro</th><th>Turno</th><th>Data/hora</th><th>Fotos</th></tr></thead><tbody id="veiculos-tbody"></tbody></table></div><section id="veiculos-foto"></section></main>';
  document.body.appendChild(root);
  document.getElementById('veiculos-voltar').onclick=()=>root.remove();
  document.getElementById('veiculos-atualizar').onclick=refresh;
