@@ -115,6 +115,7 @@
   function topbarHtml() {
     var u = S.usuario;
     var acoes = S.tela === 'painel' ? (
+      '<button type="button" data-act="mapa-gps" aria-label="Rastreamento GPS" title="Mapa das equipes" style="font-weight:700;font-size:12px">GPS</button>' +
       '<button type="button" data-act="atualizar" aria-label="Atualizar agora" title="Atualizar agora">' + ico('atualizar') + '</button>' +
       '<button type="button" data-act="tema" aria-label="Alternar tema claro e escuro" title="Alternar tema">' + ico('ajustes') + '</button>' +
       '<button type="button" data-act="usuario" aria-label="Conta de ' + esc(u ? u.nome : '') + '" aria-expanded="' + S.userPop + '" title="Conta">' + ico('usuario') + '</button>' +
@@ -684,7 +685,8 @@
     if (S.userPop && !ev.target.closest('.userpop') && !(t && t.getAttribute('data-act') === 'usuario')) { S.userPop = false; renderTopbar(); }
     if (!t) { var tr = ev.target.closest('tr[data-id]'); if (tr && S.tela === 'painel') abrir(tr.getAttribute('data-id')); return; }
     var a = t.getAttribute('data-act'), v = t.getAttribute('data-v');
-    if (a === 'scrim') { if (ev.target === t) fechar(); }
+    if (a === 'mapa-gps') { if (window.SecurityTrackingMap) window.SecurityTrackingMap.show(); }
+    else if (a === 'scrim') { if (ev.target === t) fechar(); }
     else if (a === 'fechar') fechar();
     else if (a === 'abrir') { ev.stopPropagation(); abrir(t.getAttribute('data-id')); }
     else if (a === 'aba') { if (S.aba !== v) { S.aba = v; S.status = ''; S.pagina = 1; S.dados = { linhas: [], total: 0 }; S.kpi = null; renderTabs(); renderChips(); renderKpis(); carregar(); } }
