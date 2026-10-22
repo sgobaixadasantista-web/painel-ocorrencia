@@ -688,7 +688,8 @@
     if (S.userPop && !ev.target.closest('.userpop') && !(t && t.getAttribute('data-act') === 'usuario')) { S.userPop = false; renderTopbar(); }
     if (!t) { var tr = ev.target.closest('tr[data-id]'); if (tr && S.tela === 'painel') abrir(tr.getAttribute('data-id')); return; }
     var a = t.getAttribute('data-act'), v = t.getAttribute('data-v');
-    if (a === 'veiculo-turno') { if (window.SecurityVeiculos) window.SecurityVeiculos.show(); }
+    if (a === 'frota') { if (window.SecurityFrota) window.SecurityFrota.open(); }
+    else if (a === 'veiculo-turno') { if (window.SecurityVeiculos) window.SecurityVeiculos.show(); }
     else if (a === 'efetivo-turno') { if (window.SecurityEfetivo) window.SecurityEfetivo.show(); }
     else if (a === 'mapa-gps') { if (window.SecurityTrackingMap) window.SecurityTrackingMap.show(); }
     else if (a === 'scrim') { if (ev.target === t) fechar(); }
