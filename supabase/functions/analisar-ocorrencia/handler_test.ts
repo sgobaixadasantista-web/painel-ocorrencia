@@ -1,4 +1,4 @@
-import { montarRegistro, extrairJson, validarResultado, handle } from './handler.ts';
+import { montarRegistro, extrairJson, validarResultado, handle, type Deps } from './handler.ts';
 
 function igual(atual: unknown, esperado: unknown, mensagem: string) {
   if (JSON.stringify(atual) !== JSON.stringify(esperado)) throw new Error(mensagem);
@@ -88,11 +88,11 @@ function cenario(opcoes: {
     }),
   };
   // A consulta de análises usa order() após eq(); a cadeia é intencionalmente simulada.
-  const dependencias = {
+  const dependencias: Deps = {
     env: (nome: string) => valores[nome],
     criarCliente: (_url: string, _anon: string, _token: string) => cliente,
-    fetch: async (_url: string, init?: RequestInit) => {
-      chamadas.push({ nome: 'openai', argumentos: { metodo: init?.method, url: _url } });
+    fetch: async (_url: RequestInfo | URL, init?: RequestInit) => {
+      chamadas.push({ nome: 'openai', argumentos: { metodo: init?.method, url: String(_url) } });
       if (opcoes.abortar) throw new DOMException('Teste de prazo excedido', 'AbortError');
       if (opcoes.http) return new Response('falha', { status: opcoes.http });
       return new Response(JSON.stringify({ choices: [{ message: {
