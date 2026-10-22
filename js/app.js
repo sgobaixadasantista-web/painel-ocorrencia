@@ -78,8 +78,8 @@
   function lerVisao() { try { return localStorage.getItem('visao'); } catch (e) { return null; } }
   function visaoHtml() {
     if (!S.usuario || S.usuario.perfil !== 'admin') return '';
-    return '<div role="group" aria-label="Visão do painel"><span class="r-label">Visão do painel</span><div class="opcoes" style="margin-top:6px">' +
-      [['central', 'Central'], ['inteligencia', 'Inteligência'], ['campo', 'Campo']].map(function (v) { return '<button type="button" class="r-chip" data-act="visao" data-v="' + v[0] + '" aria-pressed="' + (S.visao === v[0]) + '">' + v[1] + '</button>'; }).join('') + '</div></div>';
+    return '<div class="profile-section" role="group" aria-label="Visão do painel"><span class="profile-label">Visão do painel</span><div class="profile-views">' +
+      [['central', 'Central'], ['inteligencia', 'Inteligência'], ['campo', 'Campo']].map(function (v) { return '<button type="button" class="profile-view" data-act="visao" data-v="' + v[0] + '" aria-pressed="' + (S.visao === v[0]) + '">' + v[1] + '</button>'; }).join('') + '</div></div>';
   }
 
   /* ---------- Tema ---------- */
@@ -123,9 +123,9 @@
       '<button type="button" data-act="atualizar" aria-label="Atualizar agora" title="Atualizar agora">' + ico('atualizar') + '</button>' +
       '<button type="button" data-act="tema" aria-label="Alternar tema claro e escuro" title="Alternar tema">' + ico('ajustes') + '</button>' +
       '<button type="button" data-act="usuario" aria-label="Conta de ' + esc(u ? u.nome : '') + '" aria-expanded="' + S.userPop + '" title="Conta">' + ico('usuario') + '</button>' +
-      (S.userPop && u ? '<div class="userpop" role="dialog" aria-label="Conta"><div><b>' + esc(u.nome) + '</b><small>' + esc(lbl([['campo', 'Equipe de campo'], ['central', 'Central de atendimento'], ['inteligencia', 'Inteligência'], ['admin', 'Administrador']], u.perfil) || u.perfil || '') + '</small></div>' +
-        (D.modo === 'demo' ? '<small>Modo demonstração: nada é gravado de verdade.</small><label class="r-check" style="min-height:32px;font-size:13px"><input type="checkbox" data-act="demo-offline"' + (S.demoOff ? ' checked' : '') + '>Simular sem sinal</label>' : '<small>' + esc(u.email || '') + '</small>') +
-        visaoHtml() + '<button type="button" class="r-btn r-btn-outline r-btn-sm" data-act="sair">Sair</button></div>' : '')
+      (S.userPop && u ? '<div class="userpop" role="dialog" aria-label="Menu do perfil"><div class="profile-head"><div class="profile-avatar" aria-hidden="true">' + esc((u.nome || u.email || 'U').trim().charAt(0).toUpperCase()) + '</div><div class="profile-identity"><strong>' + esc(u.nome || 'Usuário') + '</strong><span>' + esc(lbl([['campo','Equipe de campo'],['central','Central de atendimento'],['inteligencia','Inteligência'],['admin','Administrador']],u.perfil) || u.perfil || '') + '</span></div></div>' +
+        (D.modo === 'demo' ? '<p class="profile-email">Modo demonstração</p><label class="r-check"><input type="checkbox" data-act="demo-offline"' + (S.demoOff ? ' checked' : '') + '>Simular sem sinal</label>' : '<p class="profile-email">' + esc(u.email || '') + '</p>') +
+        visaoHtml() + '<div class="profile-footer"><button type="button" class="profile-logout" data-act="sair">Sair da conta</button></div></div>' : '')
     ) : (S.tela === 'proibido' ? '<button type="button" data-act="tema" aria-label="Alternar tema claro e escuro" title="Alternar tema">' + ico('ajustes') + '</button>' : '<button type="button" data-act="tema" aria-label="Alternar tema claro e escuro" title="Alternar tema">' + ico('ajustes') + '</button>');
     return '<header class="r-topbar"><div class="r-topbar-brand"><img class="r-topbar-logo" src="' + LOGO_ESCURO + '" alt="Rumo"></div>' +
       '<div class="r-topbar-title">Security Rumo</div><div class="r-topbar-actions">' + acoes + '</div></header>';
