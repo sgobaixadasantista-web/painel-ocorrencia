@@ -1,0 +1,5 @@
+# Credenciais locais; preservar somente exemplos sem segredo.
+.env
+.env.*
+!.env.example
+!**/.env.example
