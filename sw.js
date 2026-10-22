@@ -2,12 +2,44 @@
    Só guarda arquivos DESTE site (tela, estilos, fontes). Nada do Supabase passa por aqui:
    os dados dos registros ficam no banco e na fila do aparelho (IndexedDB), não neste cache.
    Para forçar atualização do aplicativo em todos os aparelhos, troque o número em VERSAO. */
-var VERSAO = 'v2';
+var VERSAO = 'v3';
 var CACHE = 'security-rumo-' + VERSAO;
-var ARQUIVOS = ['./', 'index.html', 'manifest.webmanifest', 'css/tokens.css', 'css/rumo.css', 'css/app.css',
-  'js/config.js', 'js/icons.js', 'js/tipificacao-demo.js', 'js/minutas-demo.js', 'js/data.js', 'js/fila.js', 'js/campo.js', 'js/app.js',
-  'assets/logo-fundo-claro.png', 'assets/logo-fundo-escuro.png', 'assets/icon-192.png', 'assets/icon-512.png',
-  'assets/fonts/Inter-400.woff2', 'assets/fonts/Inter-600.woff2', 'assets/fonts/Inter-700.woff2', 'assets/fonts/Inter-800.woff2'];
+var ARQUIVOS = [
+  "./",
+  "index.html",
+  "manifest.webmanifest",
+  "assets/icon-192.png",
+  "css/tokens.css",
+  "css/rumo.css",
+  "css/app.css",
+  "css/design-system.css",
+  "css/navigation.css",
+  "css/photo-gallery.css",
+  "css/modules.css",
+  "js/config.js",
+  "js/icons.js",
+  "js/tipificacao-demo.js",
+  "js/minutas-demo.js",
+  "js/data.js",
+  "js/fila.js",
+  "js/campo.js",
+  "js/app.js",
+  "js/photo-gallery.js",
+  "js/rastreamento.js",
+  "js/efetivo.js",
+  "js/veiculos.js",
+  "js/frota.js",
+  "js/colaboradores.js",
+  "js/navigation.js",
+  "assets/icons/rumo-icones.json",
+  "assets/logo-fundo-claro.png",
+  "assets/logo-fundo-escuro.png",
+  "assets/icon-512.png",
+  "assets/fonts/Inter-400.woff2",
+  "assets/fonts/Inter-600.woff2",
+  "assets/fonts/Inter-700.woff2",
+  "assets/fonts/Inter-800.woff2"
+];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(ARQUIVOS); }).then(function () { return self.skipWaiting(); }));
