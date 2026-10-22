@@ -120,3 +120,7 @@ body.ccs-shell #frota-overlay{padding:12px!important}
  #frota-overlay .ccs-module-topbar{padding:10px 12px}
  #frota-overlay .ccs-module-topbar{margin:-22px -22px 14px}
 }
+
+/* Ícones oficiais Rumo: manter traço e tamanho consistentes no menu */
+#ccs-nav .ccs-nav-svg{display:block;width:21px;height:21px;stroke:currentColor;fill:none;flex:none}
+.r-topbar.ccs-topbar .ccs-topbar-menu .r-ico{width:22px;height:22px;stroke:currentColor}
