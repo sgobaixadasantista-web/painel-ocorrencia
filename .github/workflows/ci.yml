@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  javascript:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Conferir sintaxe JavaScript
+        run: |
+          set -e
+          for arquivo in js/*.js sw.js; do
+            echo "node --check $arquivo"
+            node --check "$arquivo"
+          done
+      - name: Conferir cache do service worker
+        run: node tools/testar-cache.js
+
+  deno:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: denoland/setup-deno@v2.0.5
+        with:
+          deno-version: v2.9.7
+      - name: Conferir tipos da Edge Function
+        run: |
+          deno check supabase/functions/analisar-ocorrencia/handler.ts
+          deno check supabase/functions/analisar-ocorrencia/index.ts
+          deno check supabase/functions/analisar-ocorrencia/handler_test.ts
+      - name: Testar Edge Function
+        run: deno test supabase/functions/analisar-ocorrencia/handler_test.ts
