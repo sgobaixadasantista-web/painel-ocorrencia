@@ -2,7 +2,7 @@
    Tokens semânticos e componentes reutilizáveis.
    Carregado após app.css; estilos legados mantidos para migração gradual. */
 :root{
-  --ccs-primary:#0B2942;--ccs-primary-hover:#164A6B;--ccs-accent:#F58220;
+  --ccs-primary:var(--rumo-orange);--ccs-primary-hover:#E87412;--ccs-accent:var(--rumo-accent);
   --ccs-canvas:var(--rumo-bg);--ccs-surface:var(--rumo-white);--ccs-text:var(--rumo-text);
   --ccs-muted:var(--rumo-muted);--ccs-border:var(--rumo-border);
   --ccs-success:var(--status-success);--ccs-warning:var(--status-warning);--ccs-danger:var(--status-danger);
@@ -22,14 +22,14 @@
 .ccs-card-title{font-weight:700;margin:0 0 8px;font-size:15px}
 .ccs-kpi-label{font-size:12px;color:var(--ccs-muted)}
 .ccs-kpi-value{font-size:clamp(22px,2.8vw,30px);font-weight:700;line-height:1.25;font-variant-numeric:tabular-nums}
-.ccs-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:var(--ccs-control-height);padding:8px 14px;border-radius:var(--ccs-radius-sm);border:1px solid transparent;background:var(--ccs-primary);color:#fff;cursor:pointer;font:600 13px/1.25 var(--font-sans);text-decoration:none;white-space:normal}
+.ccs-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:var(--ccs-control-height);padding:8px 14px;border-radius:var(--ccs-radius-sm);border:1px solid transparent;background:var(--rumo-orange);color:var(--rumo-on-orange);cursor:pointer;font:600 13px/1.25 var(--font-sans);text-decoration:none;white-space:normal}
 .ccs-btn:hover{background:var(--ccs-primary-hover)}
 .ccs-btn:disabled{opacity:.5;cursor:not-allowed}
-.ccs-btn--accent{background:var(--ccs-accent);color:#0b2942}
-.ccs-btn--accent:hover{background:#ee7210}
+.ccs-btn--accent{background:var(--rumo-accent);color:var(--rumo-on-accent)}
+.ccs-btn--accent:hover{filter:brightness(1.12)}
 .ccs-btn--outline{background:var(--ccs-surface);border-color:var(--ccs-border);color:var(--ccs-text)}
 .ccs-btn--outline:hover{background:var(--ccs-canvas)}
-.ccs-btn--danger{background:#b42318;color:#fff}
+.ccs-btn--danger{background:var(--status-danger);color:var(--rumo-on-danger)}
 .ccs-btn--sm{min-height:32px;padding:6px 10px;font-size:12px}
 .ccs-field{display:flex;flex-direction:column;gap:5px;min-width:0;color:var(--ccs-text);font-size:12px;font-weight:600}
 .ccs-input,.ccs-select,.ccs-textarea{width:100%;min-width:0;min-height:var(--ccs-control-height);box-sizing:border-box;border:1px solid var(--ccs-border);border-radius:var(--ccs-radius-sm);background:var(--ccs-surface);color:var(--ccs-text);padding:9px 12px;font:400 14px/1.4 var(--font-sans)}
@@ -57,14 +57,19 @@
 
 /* Paleta funcional de ações: uma única fonte para todos os módulos. */
 :root{
-  --ccs-action-primary:#0B2942;
-  --ccs-action-primary-hover:#164A6B;
-  --ccs-action-accent:#F58220;
+  --ccs-action-primary:var(--rumo-orange);
+  --ccs-action-primary-hover:#E87412;
+  --ccs-action-accent:var(--rumo-orange);
   --ccs-action-accent-hover:#E87412;
-  --ccs-action-neutral-bg:#FFFFFF;
-  --ccs-action-neutral-text:#0B2942;
-  --ccs-action-neutral-border:#B9C8D4;
-  --ccs-action-danger:#B42318;
+  --ccs-action-neutral-bg:var(--rumo-white);
+  --ccs-action-neutral-text:var(--rumo-accent);
+  --ccs-action-neutral-border:var(--rumo-border);
+  --ccs-action-danger:var(--status-danger);
   --ccs-action-danger-hover:#912018;
   --ccs-action-focus:#F58220;
 }
+
+/* DNA Rumo: primário laranja, secundário azul de interação, contorno neutro. */
+.ccs-btn{min-height:44px}
+.ccs-btn--outline{color:var(--rumo-accent);border-color:var(--rumo-accent)}
+.ccs-btn--sm{min-height:36px}
