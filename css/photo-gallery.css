@@ -1,0 +1,18 @@
+/* Security CCS shared image viewer */
+.ccs-photo-modal{position:fixed;inset:0;z-index:20000;background:#061b2de8;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
+.ccs-photo-dialog{background:#fff;color:#0b2942;width:min(940px,100%);max-height:95dvh;overflow:auto;border-radius:14px;padding:16px;box-shadow:0 20px 60px #0008;box-sizing:border-box}
+.ccs-photo-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.ccs-photo-head strong{font-size:16px;overflow-wrap:anywhere}
+.ccs-photo-modal button{cursor:pointer;border:0;border-radius:8px;padding:9px 12px;background:#0b2942;color:#fff;font-weight:600}
+.ccs-photo-modal button:focus-visible{outline:3px solid #f58220;outline-offset:2px}
+.ccs-photo-stage{display:flex;align-items:center;gap:10px;background:#0b2942;border-radius:10px;padding:12px}
+.ccs-photo-stage figure{flex:1;min-width:0;margin:0;text-align:center;color:#fff}
+.ccs-photo-stage img{display:block;max-width:100%;max-height:65dvh;object-fit:contain;margin:auto;border-radius:6px}
+.ccs-photo-stage figcaption{margin-top:8px;font-size:13px}
+.ccs-photo-stage>button{background:#ffffff20;font-size:22px}
+.ccs-photo-thumbs{display:flex;gap:8px;margin-top:12px;overflow:auto}
+.ccs-photo-thumbs button{flex:0 0 auto;background:#f2f6f9;color:#0b2942;border:2px solid #dbe4ec;min-width:104px}
+.ccs-photo-thumbs button[aria-pressed=true]{border-color:#f58220}
+.ccs-photo-thumbs img{display:block;width:94px;height:64px;object-fit:cover;border-radius:4px}
+.ccs-photo-thumbs span{display:block;margin-top:4px}
+@media(max-width:650px){.ccs-photo-modal{padding:6px}.ccs-photo-dialog{padding:10px}.ccs-photo-stage{gap:4px;padding:6px}.ccs-photo-stage>button{padding:8px}}
