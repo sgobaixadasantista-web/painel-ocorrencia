@@ -59,7 +59,7 @@
   async function openMap(item){
     const lat=Number(item.latitude),lon=Number(item.longitude);
     if(item.latitude==null||item.longitude==null||!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)throw Error('Coordenadas inválidas');
-    await loadLeaflet();closeMap();
+    await loadLeaflet();if(!document.getElementById('gps-overlay'))return;closeMap();
     const modal=document.createElement('div');modal.id='gps-map-modal';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Localização da equipe');
     modal.innerHTML='<section class="gps-map-dialog"><div class="gps-map-top"><strong>Localização · '+esc(item.equipe||'Equipe')+'</strong><button id="gps-map-close" type="button">✕ Fechar</button></div><div id="gps-map"></div><p>Última coleta: '+esc(formatTime(item.coletado_em))+' · Latitude: '+lat.toFixed(6)+' · Longitude: '+lon.toFixed(6)+'</p></section>';
     document.body.appendChild(modal);const previous=document.activeElement;
