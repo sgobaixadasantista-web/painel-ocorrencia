@@ -83,16 +83,7 @@ async function photos(id){
   return result.error?null:{label,url:result.data.signedUrl};
  }))).filter(Boolean);
  if(!items.length){area.innerHTML='<p>Nenhuma foto disponível para esta inspeção.</p>';return;}
- let current=0;
- area.innerHTML='<div class="f-gallery"><div class="f-head"><h3>Galeria · '+items.length+' foto(s)</h3><button type="button" id="f-gallery-close">Fechar galeria</button></div><div class="f-gallery-stage"><button type="button" id="f-gallery-prev" aria-label="Foto anterior">‹</button><figure><img id="f-gallery-main" alt=""><figcaption id="f-gallery-caption"></figcaption></figure><button type="button" id="f-gallery-next" aria-label="Próxima foto">›</button></div><div class="f-gallery-thumbs" id="f-gallery-thumbs"></div></div>';
- const image=area.querySelector('#f-gallery-main'),caption=area.querySelector('#f-gallery-caption'),thumbs=area.querySelector('#f-gallery-thumbs');
- thumbs.innerHTML=items.map((f,i)=>'<button type="button" data-gallery-index="'+i+'" aria-label="Ver foto '+E(f.label)+'"><img src="'+E(f.url)+'" alt="'+E(f.label)+'"><span>'+E(f.label)+'</span></button>').join('');
- function display(n){current=(n+items.length)%items.length;image.src=items[current].url;image.alt='Foto '+items[current].label;caption.textContent=items[current].label+' · '+(current+1)+' de '+items.length;thumbs.querySelectorAll('button').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===current)));}
- area.querySelector('#f-gallery-prev').onclick=()=>display(current-1);
- area.querySelector('#f-gallery-next').onclick=()=>display(current+1);
- area.querySelector('#f-gallery-close').onclick=()=>area.innerHTML='';
- thumbs.querySelectorAll('button').forEach(b=>b.onclick=()=>display(Number(b.dataset.galleryIndex)));
- display(0);
+ window.CCSPhotoGallery.open({title:'Checklist · '+(selected?.placa||''),images:items});area.innerHTML='';
  }catch(error){area.innerHTML='<p role="alert">Não foi possível abrir a galeria: '+E(error.message)+'</p>';}
 }
 async function refresh(){try{const c=await db();const auth=await c.auth.getUser();if(!auth.data?.user)throw Error('Entre no painel.');const [v,i]=await Promise.all([c.from('veiculos').select('*').order('placa'),c.from('veiculos_checklist').select('*').order('criado_em',{ascending:false})]);if(v.error)throw v.error;if(i.error)throw i.error;vehicles=v.data||[];inspections=i.data||[];render();message('Dados sincronizados com CCS360-V2.')}catch(e){if(root())message('Falha ao consultar frota: '+e.message,true)}}
