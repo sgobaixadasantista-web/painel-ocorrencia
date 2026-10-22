@@ -82,3 +82,41 @@ body.ccs-shell #frota-overlay{padding:12px!important}
 .r-topbar.ccs-topbar .ccs-topbar-actions .userpop{position:absolute;top:calc(100% + 10px);right:0;z-index:500}
 @media(max-width:1023px){body.ccs-shell .r-topbar.ccs-topbar{display:flex;min-height:60px;padding:8px 12px}body.ccs-shell .r-topbar.ccs-topbar .ccs-topbar-actions{max-width:none;overflow:visible}}
 @media(max-width:460px){.ccs-topbar-left{gap:7px}.ccs-topbar-identity strong{font-size:12px}.ccs-topbar-identity small{font-size:10px}.r-topbar.ccs-topbar .ccs-topbar-actions{gap:4px}.r-topbar.ccs-topbar .ccs-topbar-actions>button,.r-topbar.ccs-topbar .ccs-topbar-menu{width:36px;min-width:36px;flex-basis:36px;height:36px}}
+
+/* Cabeçalho único de páginas internas: Security CCS */
+#gps-overlay .ccs-module-topbar,
+#efetivo-overlay .ccs-module-topbar,
+#veiculos-overlay .ccs-module-topbar,
+#colab-overlay .ccs-module-topbar,
+#frota-overlay .ccs-module-topbar{
+ display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+ min-height:60px;box-sizing:border-box;padding:10px 18px;
+ border:0;border-radius:0;background:#0b2942;color:#fff;
+}
+#frota-overlay .ccs-module-topbar{margin:-22px -22px 16px;border-radius:12px 12px 0 0}
+#colab-overlay .ccs-module-topbar{margin:-20px -20px 18px;border-radius:12px 12px 0 0}
+.ccs-module-brand{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ccs-module-brand strong{font-size:14px;letter-spacing:.055em;line-height:20px;color:#fff}
+.ccs-module-brand small{font-size:11px;color:#b7cad8;font-weight:500}
+.ccs-module-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+#gps-overlay .ccs-module-topbar button,
+#efetivo-overlay .ccs-module-topbar button,
+#veiculos-overlay .ccs-module-topbar button,
+#colab-overlay .ccs-module-topbar button,
+#frota-overlay .ccs-module-topbar button{
+ min-height:38px;width:auto;padding:8px 12px;border:1px solid #ffffff26;
+ background:#ffffff14;color:#fff;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap
+}
+#gps-overlay .ccs-module-topbar button:hover,
+#efetivo-overlay .ccs-module-topbar button:hover,
+#veiculos-overlay .ccs-module-topbar button:hover,
+#colab-overlay .ccs-module-topbar button:hover,
+#frota-overlay .ccs-module-topbar button:hover{background:#ffffff29}
+@media(max-width:650px){
+ #gps-overlay .ccs-module-topbar,
+ #efetivo-overlay .ccs-module-topbar,
+ #veiculos-overlay .ccs-module-topbar,
+ #colab-overlay .ccs-module-topbar,
+ #frota-overlay .ccs-module-topbar{padding:10px 12px}
+ #frota-overlay .ccs-module-topbar{margin:-22px -22px 14px}
+}
