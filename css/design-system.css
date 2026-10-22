@@ -54,5 +54,3 @@
 .ccs-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .ccs-btn:focus-visible,.ccs-table button:focus-visible{outline:3px solid var(--ccs-accent);outline-offset:2px}
 @media(max-width:650px){.ccs-page{padding:12px}.ccs-modal{padding:14px}.ccs-toolbar>.ccs-field{flex:1 1 100%}}
-/* Adaptação progressiva dos módulos que já usam r-table. */
-#efetivo-overlay .ccs-standard-table,#veiculos-overlay .ccs-standard-table,#frota-overlay .ccs-standard-table{font-size:13px}
