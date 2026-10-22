@@ -14,25 +14,7 @@ async function db(){
  return client||(client=window.supabase.createClient(DB.SUPABASE_URL,DB.SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true}}));
 }
 function status(v){const a=inspections.filter(i=>i.veiculo_id===v.id&&i.status_checklist!=='PENDENTE').sort((a,b)=>b.data_checklist.localeCompare(a.data_checklist)||b.criado_em.localeCompare(a.criado_em))[0];if(!a)return ['SEM CHECKLIST','warn'];if(a.status_checklist==='IRREGULAR')return ['IRREGULAR','bad'];let days=Math.round((new Date(a.validade_checklist+'T12:00:00')-new Date(today()+'T12:00:00'))/86400000);return days<0?['VENCIDO','bad']:days<=3?['VENCE EM '+days+' DIA(S)','warn']:['EM DIA','ok']}
-function style(){if(document.getElementById('frota-style'))return;const el=document.createElement('style');el.id='frota-style';el.textContent=`
-#frota-overlay{position:fixed;inset:0;z-index:9000;background:#061b2dcc;overflow:auto;padding:24px;color:#0b2942}
-#frota-overlay .f-panel{max-width:1150px;margin:0 auto;background:#f7f9fc;border-radius:15px;padding:22px;font:14px Inter,Arial,sans-serif}
-#frota-overlay .f-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-#frota-overlay .f-head h2{margin:0}#frota-overlay .f-actions{display:flex;gap:8px;flex-wrap:wrap}
-#frota-overlay button{background:#0b2942;color:#fff;border:0;border-radius:7px;padding:10px 14px;cursor:pointer}
-#frota-overlay button.orange{background:#f58220;color:#111}#frota-overlay button:disabled{opacity:.55}
-#frota-overlay .f-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin:16px 0}
-#frota-overlay .f-card{background:white;border:1px solid #dce3ea;padding:15px;border-radius:9px}
-#frota-overlay .f-card strong{display:block;font-size:24px;margin-top:8px}
-#frota-overlay .f-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
-#frota-overlay label{display:flex;flex-direction:column;gap:5px;font-weight:600}
-#frota-overlay input,#frota-overlay select,#frota-overlay textarea{width:100%;padding:10px;border:1px solid #b7c6d3;border-radius:7px;background:white;color:#0b2942;box-sizing:border-box}
-#frota-overlay .f-section{background:white;border:1px solid #dce3ea;border-radius:10px;padding:16px;margin-top:16px}
-#frota-overlay table{border-collapse:collapse;width:100%}#frota-overlay th,#frota-overlay td{padding:10px;text-align:left;border-bottom:1px solid #e2e8f0}
-#frota-overlay .f-scroll{overflow:auto}#frota-overlay .f-tag{font-weight:700;font-size:11px;padding:5px 7px;border-radius:5px;background:#edf1f5}
-#frota-overlay .f-tag.ok{background:#dff4e9;color:#17603b}#frota-overlay .f-tag.bad{background:#ffe2e1;color:#a32121}
-#frota-overlay .f-tag.warn{background:#fff0ce;color:#794d00}#frota-overlay .f-hidden{display:none}
-`;el.textContent+=`\n#frota-overlay .f-gallery{margin-top:18px;border:1px solid #dce3ea;border-radius:12px;padding:14px;background:#f6f8fb}\n#frota-overlay .f-gallery-stage{display:flex;align-items:center;justify-content:center;gap:10px;background:#0b2942;border-radius:10px;padding:12px}\n#frota-overlay .f-gallery-stage figure{margin:0;min-width:0;flex:1;text-align:center;color:white}\n#frota-overlay .f-gallery-stage img{display:block;max-width:100%;max-height:65vh;object-fit:contain;margin:auto;border-radius:6px}\n#frota-overlay .f-gallery-stage figcaption{padding-top:10px}\n#frota-overlay .f-gallery-stage button{font-size:26px;background:#244660;flex:none}\n#frota-overlay .f-gallery-thumbs{display:flex;gap:10px;overflow-x:auto;padding:12px 0}\n#frota-overlay .f-gallery-thumbs button{flex:0 0 110px;background:white;color:#0b2942;border:2px solid transparent;padding:5px;font-size:11px}\n#frota-overlay .f-gallery-thumbs button[aria-pressed=true]{border-color:#f58220}\n#frota-overlay .f-gallery-thumbs img{width:100%;height:72px;object-fit:cover;border-radius:4px}\n#frota-overlay .f-gallery-thumbs span{display:block;white-space:normal}\n`;document.head.appendChild(el)}
+function style(){/* Estilos consolidados em css/modules.css */}
 function render(){
  const counts={ok:0,bad:0,warn:0};vehicles.forEach(v=>counts[status(v)[1]]++);
  root().innerHTML='<div class="f-panel"><div class="f-head ccs-module-topbar"><div class="ccs-module-brand"><strong>SECURITY CCS</strong><small>Frota e Checklists</small></div><div class="f-actions ccs-module-actions"><button type="button" id="frota-refresh">Atualizar</button><button type="button" class="orange" id="frota-newvehicle">Cadastrar veículo</button><button type="button" id="frota-close">Fechar</button></div></div><div id="frota-msg" role="status"></div>'+
