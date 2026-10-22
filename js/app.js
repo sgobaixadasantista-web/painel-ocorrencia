@@ -115,6 +115,7 @@
   function topbarHtml() {
     var u = S.usuario;
     var acoes = S.tela === 'painel' ? (
+      ((u && ['admin','central'].includes(u.perfil)) ? '<button type="button" data-act="frota" title="Cadastro de frota e checklist de 15 dias" style="font-weight:700;font-size:12px">FROTA</button>' : '') +
       '<button type="button" data-act="veiculo-turno" aria-label="Veículo no Turno" title="Veículo no Turno" style="font-weight:700;font-size:12px">VEÍCULO</button>' +
       '<button type="button" data-act="efetivo-turno" aria-label="Efetivo no Turno" title="Efetivo no Turno" style="font-weight:700;font-size:12px">EFETIVO</button>' +
       '<button type="button" data-act="mapa-gps" aria-label="Rastreamento GPS" title="Mapa das equipes" style="font-weight:700;font-size:12px">GPS</button>' +
