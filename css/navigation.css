@@ -64,3 +64,21 @@ body.ccs-shell #frota-overlay{padding:12px!important}
  body.ccs-shell.ccs-sidebar-collapsed #frota-overlay,
  body.ccs-shell.ccs-sidebar-collapsed #colab-overlay{left:0!important;right:0!important;width:100%!important}
 }
+
+/* Topbar compartilhada · Security CCS */
+.r-topbar.ccs-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px;height:auto;padding:9px clamp(12px,2vw,24px);box-sizing:border-box;background:#0b2942;color:white}
+.ccs-topbar-left{display:flex;align-items:center;gap:12px;min-width:0}
+.ccs-topbar-identity{display:flex;flex-direction:column;min-width:0;gap:2px}
+.ccs-topbar-identity strong{font-size:14px;letter-spacing:.055em;white-space:nowrap}
+.ccs-topbar-identity small{font-size:11px;color:#b7cad8;font-weight:500}
+.r-topbar.ccs-topbar .ccs-topbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-width:0;flex-wrap:nowrap;overflow:visible}
+.r-topbar.ccs-topbar .ccs-topbar-menu,
+.r-topbar.ccs-topbar .ccs-topbar-actions>button{display:inline-flex;align-items:center;justify-content:center;flex:0 0 40px;width:40px;height:40px;min-width:40px;padding:0;background:#ffffff14;border:1px solid #ffffff26;border-radius:9px;color:white;cursor:pointer}
+.r-topbar.ccs-topbar .ccs-topbar-menu:hover,
+.r-topbar.ccs-topbar .ccs-topbar-actions>button:hover{background:#ffffff2b}
+.r-topbar.ccs-topbar .ccs-topbar-menu:focus-visible,
+.r-topbar.ccs-topbar .ccs-topbar-actions>button:focus-visible{outline:2px solid #f58220;outline-offset:2px}
+.r-topbar.ccs-topbar .ccs-topbar-menu{font-size:23px}
+.r-topbar.ccs-topbar .ccs-topbar-actions .userpop{position:absolute;top:calc(100% + 10px);right:0;z-index:500}
+@media(max-width:1023px){body.ccs-shell .r-topbar.ccs-topbar{display:flex;min-height:60px;padding:8px 12px}body.ccs-shell .r-topbar.ccs-topbar .ccs-topbar-actions{max-width:none;overflow:visible}}
+@media(max-width:460px){.ccs-topbar-left{gap:7px}.ccs-topbar-identity strong{font-size:12px}.ccs-topbar-identity small{font-size:10px}.r-topbar.ccs-topbar .ccs-topbar-actions{gap:4px}.r-topbar.ccs-topbar .ccs-topbar-actions>button,.r-topbar.ccs-topbar .ccs-topbar-menu{width:36px;min-width:36px;flex-basis:36px;height:36px}}
