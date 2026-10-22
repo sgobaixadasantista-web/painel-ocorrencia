@@ -1,5 +1,7 @@
 # Painel de Ocorrências — Security Rumo
 
+[![CI](https://github.com/sgobaixadasantista-web/painel-ocorrencia/actions/workflows/ci.yml/badge.svg)](https://github.com/sgobaixadasantista-web/painel-ocorrencia/actions/workflows/ci.yml)
+
 Três painéis no padrão visual **DNA Rumo**, com **Supabase** como banco, login e armazenamento de fotos:
 
 | Painel | Quem usa | O que faz |
@@ -100,11 +102,45 @@ As regras a seguir precisam de validação jurídica e operacional; algumas depe
 - **Tipos e subtipos:** vieram do que foi visto no Rumo - SLA; só APREENSÃO tem subtipos. Edite `tipos_ocorrencia` e `subtipos_ocorrencia` no *Table Editor*.
 - **Fuso:** "hoje" e a numeração por ano usam `America/Sao_Paulo`.
 
-## O que foi testado
+## Testes
 
-Os arquivos 001–003 e os caminhos de uso de SQL foram inspecionados no repositório. A existência das referências estáticas do `index.html` e dos recursos adicionais no cache foi conferida por leitura do repositório. Foi incluído `tools/testar-cache.js` para repetir a checagem no clone e `handler_test.ts` com casos de extração de JSON, formato inválido, status inesperado, nota normalizada e limites de caracteres.
+A integração contínua está definida em `.github/workflows/ci.yml` e executa, em push e pull request:
 
-**Ainda não executado nesta revisão:** `deno test` (Deno não instalado no ambiente disponível), testes autenticados de RLS/Storage, integração com a API OpenAI, testes visuais de navegador, migrações reais e implantação. Consulte os resultados de checks da entrega; não considerar esses fluxos aprovados sem execução.
+```bash
+for arquivo in js/*.js sw.js; do node --check "$arquivo"; done
+node tools/testar-cache.js
+deno check supabase/functions/analisar-ocorrencia/handler.ts
+deno check supabase/functions/analisar-ocorrencia/index.ts
+deno check supabase/functions/analisar-ocorrencia/handler_test.ts
+deno test supabase/functions/analisar-ocorrencia/handler_test.ts
+```
+
+Os testes do handler utilizam dependências simuladas, sem credenciais reais. Cobrem CORS, métodos, autorização, chave ausente, UUID, perfis, ocorrência concluída, resposta da OpenAI, erros de formato, timeout, limite de requisições e persistência pela RPC.
+
+### RLS local
+
+**Pré-requisitos:** Docker, Supabase CLI e PostgreSQL `psql`. O teste pressupõe migrações `001_painel_ocorrencias.sql`, `002_inteligencia.sql`, `003_campo.sql` e `006_fotos_leitura.sql` e cinco usuários de teste com perfis `campo`, `central`, `inteligencia`, `admin` e um perfil inativo. Não utilize usuários reais para testes de escrita.
+
+```bash
+supabase start
+# Aplique 001, 002, 003 e 006 no banco local, em ordem,
+# e crie usuários de teste pelo Auth local.
+psql "$DATABASE_URL_LOCAL" \
+  -v uid_campo="<uuid-campo>" \
+  -v uid_central="<uuid-central>" \
+  -v uid_inteligencia="<uuid-inteligencia>" \
+  -v uid_admin="<uuid-admin>" \
+  -v uid_inativo="<uuid-inativo>" \
+  -f supabase/tests/rls.sql
+```
+
+Os dados de teste e a URL do banco local devem ser fornecidos pelo operador. **As migrações 004 e 005 permanecem ausentes**; testes que dependam delas não são cobertos.
+
+### O que foi executado
+
+A rodada anterior verificou, por leitura, que o bucket `evidencias` passou a isolar os arquivos do perfil campo após a migração 006 no CCS360-V2. Nesta rodada foram acrescentados arquivos de teste de IA, RLS e CI.
+
+**Não confirmado nesta rodada:** execução local dos testes Deno e dos testes SQL com Docker/Supabase CLI; execução do workflow remoto; chamadas reais à OpenAI; testes end-to-end com contas de campo, central, inteligência e admin. Os resultados do CI só poderão ser declarados aprovados após a primeira execução no GitHub Actions.
 
 ## Próximos passos naturais
 
