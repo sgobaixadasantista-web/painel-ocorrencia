@@ -1,16 +1,16 @@
 (function(){
   'use strict';
-  let map=null,layer=null,timer=null,client=null,positions=[],pins=new Map(),selection='',filter='TODOS',query='',initialFit=false;
+  let map=null,timer=null,client=null,positions=[],filter='TODOS',query='',modalCleanup=null,loadingMap=null;
   const config=window.PAINEL_CONFIG||{};
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function loadLeaflet(){
     if(window.L)return Promise.resolve();
-    return new Promise((resolve,reject)=>{
-      if(!document.getElementById('tracking-leaflet-css')){
-        const css=document.createElement('link');css.id='tracking-leaflet-css';css.rel='stylesheet';css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(css);
-      }
-      const js=document.createElement('script');js.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';js.onload=resolve;js.onerror=()=>reject(Error('Falha ao carregar mapa'));document.head.appendChild(js);
-    });
+    if(loadingMap)return loadingMap;
+    loadingMap=new Promise((resolve,reject)=>{
+      if(!document.getElementById('tracking-leaflet-css')){const l=document.createElement('link');l.id='tracking-leaflet-css';l.rel='stylesheet';l.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(l);}
+      const script=document.createElement('script');script.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';script.onload=resolve;script.onerror=()=>reject(Error('Falha ao carregar Leaflet.'));document.head.appendChild(script);
+    }).catch(err=>{loadingMap=null;throw err});
+    return loadingMap;
   }
   async function getClient(){
     if(client)return client;
@@ -52,6 +52,7 @@
     }catch(error){status.textContent='Não foi possível atualizar: '+(error.message||error);}
   }
   function closeMap(){
+    if(modalCleanup){document.removeEventListener('keydown',modalCleanup);modalCleanup=null;}
     if(map){map.remove();map=null}
     document.getElementById('gps-map-modal')?.remove();
   }
@@ -63,8 +64,8 @@
     modal.innerHTML='<section class="gps-map-dialog"><div class="gps-map-top"><strong>Localização · '+esc(item.equipe||'Equipe')+'</strong><button id="gps-map-close" type="button">✕ Fechar</button></div><div id="gps-map"></div><p>Última coleta: '+esc(formatTime(item.coletado_em))+' · Latitude: '+lat.toFixed(6)+' · Longitude: '+lon.toFixed(6)+'</p></section>';
     document.body.appendChild(modal);const previous=document.activeElement;
     const key=e=>{if(e.key==='Escape')dismiss()};
-    function dismiss(){document.removeEventListener('keydown',key);closeMap();if(previous?.isConnected)previous.focus()}
-    document.addEventListener('keydown',key);modal.querySelector('#gps-map-close').onclick=dismiss;modal.onclick=e=>{if(e.target===modal)dismiss()};
+    function dismiss(){closeMap();if(previous?.isConnected)previous.focus()}
+    modalCleanup=key;document.addEventListener('keydown',key);modal.querySelector('#gps-map-close').onclick=dismiss;modal.onclick=e=>{if(e.target===modal)dismiss()};
     try{
       map=window.L.map('gps-map').setView([lat,lon],16);
       window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(map);
