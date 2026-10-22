@@ -124,3 +124,25 @@ body.ccs-shell #frota-overlay{padding:12px!important}
 /* Ícones oficiais Rumo: manter traço e tamanho consistentes no menu */
 #ccs-nav .ccs-nav-svg{display:block;width:21px;height:21px;stroke:currentColor;fill:none;flex:none}
 .r-topbar.ccs-topbar .ccs-topbar-menu .r-ico{width:22px;height:22px;stroke:currentColor}
+
+/* Correções de consistência: páginas operacionais integradas ao shell. */
+body.ccs-shell #gps-overlay,
+body.ccs-shell #efetivo-overlay,
+body.ccs-shell #veiculos-overlay,
+body.ccs-shell #frota-overlay,
+body.ccs-shell #colab-overlay{background:var(--rumo-bg,#f4f6f8)!important;color:var(--rumo-text,#0b2942);overflow:auto}
+body.ccs-shell #frota-overlay,body.ccs-shell #colab-overlay{padding:0!important}
+body.ccs-shell #frota-overlay .f-panel,
+body.ccs-shell #colab-overlay .colab-panel{max-width:1480px;min-height:100%;width:100%;margin:0 auto;background:var(--rumo-bg,#f4f6f8);box-sizing:border-box;border-radius:0;padding:16px}
+body.ccs-shell #frota-overlay .ccs-module-topbar,
+body.ccs-shell #colab-overlay .ccs-module-topbar{margin:-16px -16px 16px;border-radius:0}
+body.ccs-shell #gps-overlay .gps-main,
+body.ccs-shell #efetivo-overlay main,
+body.ccs-shell #veiculos-overlay main{max-width:1480px;width:100%;box-sizing:border-box}
+body.ccs-shell #frota-overlay .f-section,
+body.ccs-shell #colab-overlay .colab-scroll{min-width:0}
+body.ccs-shell #gps-overlay .r-table-wrap,
+body.ccs-shell #frota-overlay .r-table-wrap,
+body.ccs-shell #veiculos-overlay .r-table-wrap,
+body.ccs-shell #efetivo-overlay .r-table-wrap{box-shadow:var(--rumo-shadow-card,0 2px 9px #0001)}
+@media(max-width:650px){body.ccs-shell #frota-overlay .f-panel,body.ccs-shell #colab-overlay .colab-panel{padding:12px}body.ccs-shell #frota-overlay .ccs-module-topbar,body.ccs-shell #colab-overlay .ccs-module-topbar{margin:-12px -12px 14px}}
