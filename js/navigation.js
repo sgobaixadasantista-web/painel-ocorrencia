@@ -1,31 +1,97 @@
-/* Security CCS - Navigation Shell v1.0 */
+/* Security CCS · Navegação unificada v1.1 */
 (function(){
 'use strict';
-const root=()=>document.getElementById('app');
-let expanded=true,openMobile=false,lastMode='',syncing=false;
+const app=()=>document.getElementById('app');
+const overlays={'mapa-gps':'gps-overlay','efetivo-turno':'efetivo-overlay','veiculo-turno':'veiculos-overlay','frota':'frota-overlay','colaboradores':'colab-overlay'};
+const closeIds={'gps-overlay':'gps-close','efetivo-overlay':'ef-close','veiculos-overlay':'vt-close','frota-overlay':'frota-close','colab-overlay':'colab-close'};
+const icons={'nav-events':'▤','nav-occurrences':'▥','mapa-gps':'◎','efetivo-turno':'♙','veiculo-turno':'▣',frota:'▦',colaboradores:'♧'};
+let expanded=true,mobileOpen=false,modeSeen='',current='nav-events',queued=false;
 try{expanded=localStorage.getItem('ccs-nav-collapsed')!=='1'}catch(_){}
-const icon={home:'⌂',occur:'▤',gps:'◎',team:'♙',vehicle:'▣',fleet:'▥',users:'♙'};
-function mode(){const r=root();if(!r||!r.querySelector('.r-topbar')||!r.querySelector('main.page')||r.querySelector('#campo-root'))return null;const title=r.querySelector('.r-page-h1')?.textContent||'';return /Inteligência/i.test(title)?'inteligencia':'central'}
-function allowed(){const m=mode();if(!m)return [];return [
- {group:'OPERAÇÕES',items:[{text:'Visão geral',action:'nav-home',ico:'home'},...(m==='central'?[{text:'Ocorrências',action:'nav-occurrences',ico:'occur'}]:[{text:'Ocorrências',action:'nav-home',ico:'occur'}]),{text:'Monitoramento GPS',action:'mapa-gps',ico:'gps'}]},
- ...(m==='central'?[{group:'GESTÃO',items:[{text:'Efetivo no Turno',action:'efetivo-turno',ico:'team'},{text:'Veículo no Turno',action:'veiculo-turno',ico:'vehicle'},{text:'Frota e Checklists',action:'frota',ico:'fleet'}]},{group:'CADASTROS',items:[{text:'Colaboradores',action:'colaboradores',ico:'users'}]}]:[])
- ]}
-function build(){const groups=allowed(),m=mode(),nav=document.getElementById('ccs-nav'),scrim=document.getElementById('ccs-nav-backdrop');if(!m){nav?.remove();scrim?.remove();document.body.classList.remove('ccs-shell','ccs-sidebar-collapsed','ccs-sidebar-mobile-open');lastMode='';return}
- if(nav&&m===lastMode){document.body.classList.toggle('ccs-sidebar-collapsed',!expanded);document.body.classList.toggle('ccs-sidebar-mobile-open',openMobile);syncSelection();return}
- nav?.remove();scrim?.remove();lastMode=m;
- const backdrop=document.createElement('button');backdrop.id='ccs-nav-backdrop';backdrop.type='button';backdrop.setAttribute('aria-label','Fechar navegação');backdrop.onclick=closeMobile;document.body.appendChild(backdrop);
- const el=document.createElement('aside');el.id='ccs-nav';el.setAttribute('aria-label','Navegação principal');el.innerHTML='<div class="ccs-nav-brand"><strong>SECURITY CCS</strong><button type="button" id="ccs-collapse" title="Recolher ou expandir menu" aria-label="Recolher ou expandir menu">‹</button></div>'+
- groups.map(g=>'<div class="ccs-nav-group"><div class="ccs-nav-caption">'+g.group+'</div>'+g.items.map(item=>'<button type="button" class="ccs-nav-link" data-ccs-action="'+item.action+'" title="'+item.text+'"><span class="ccs-nav-icon" aria-hidden="true">'+icon[item.ico]+'</span><span class="ccs-nav-text">'+item.text+'</span></button>').join('')+'</div>').join('');
- document.body.appendChild(el);document.body.classList.add('ccs-shell');document.body.classList.toggle('ccs-sidebar-collapsed',!expanded);document.body.classList.toggle('ccs-sidebar-mobile-open',openMobile);
- el.querySelector('#ccs-collapse').onclick=()=>{expanded=!expanded;try{localStorage.setItem('ccs-nav-collapsed',expanded?'0':'1')}catch(_){}document.body.classList.toggle('ccs-sidebar-collapsed',!expanded)};
- el.querySelectorAll('[data-ccs-action]').forEach(b=>b.onclick=()=>{const a=b.dataset.ccsAction;closeMobile();if(a==='nav-home'||a==='nav-occurrences'){const target=a==='nav-home'?'eventos':'ocorrencias';const tab=root()?.querySelector('[data-act="aba"][data-v="'+target+'"]');if(tab)tab.click();else if(a==='nav-home'){root()?.querySelector('[data-act="atualizar"]')?.click()}syncSelection();return;}const button=document.createElement('button');button.type='button';button.dataset.act=a;button.hidden=true;root().appendChild(button);button.click();button.remove();syncSelection()});
- syncSelection()
+function mode(){
+ const el=app();if(!el?.querySelector('.r-topbar')||!el.querySelector('main.page')||el.querySelector('#campo-root'))return null;
+ return /Inteligência/i.test(el.querySelector('.r-page-h1')?.textContent||'')?'inteligencia':'central';
 }
-function syncSelection(){const nav=document.getElementById('ccs-nav');if(!nav)return;const occurrences=root()?.querySelector('[data-act="aba"][data-v="ocorrencias"][aria-selected="true"]');nav.querySelectorAll('.ccs-nav-link').forEach(b=>{const active=b.dataset.ccsAction===(occurrences?'nav-occurrences':'nav-home');b.classList.toggle('is-active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')})}
-function closeMobile(){openMobile=false;document.body.classList.remove('ccs-sidebar-mobile-open')}
-document.addEventListener('click',e=>{if(e.target.closest('[data-act="nav-toggle"]')){e.preventDefault();if(window.matchMedia('(max-width: 1023px)').matches){openMobile=!openMobile;document.body.classList.toggle('ccs-sidebar-mobile-open',openMobile)}else{expanded=!expanded;document.body.classList.toggle('ccs-sidebar-collapsed',!expanded);try{localStorage.setItem('ccs-nav-collapsed',expanded?'0':'1')}catch(_){}}}});
+function items(){
+ const m=mode();if(!m)return [];
+ return [
+ {title:'OPERAÇÕES',links:[
+ {id:'nav-events',name:'Eventos'},
+ {id:'nav-occurrences',name:'Ocorrências'},
+ {id:'mapa-gps',name:'Monitoramento GPS'}
+ ]},
+ ...(m==='central'?[{title:'GESTÃO',links:[{id:'efetivo-turno',name:'Efetivo no Turno'},{id:'veiculo-turno',name:'Veículo no Turno'},{id:'frota',name:'Frota e Checklists'}]},{title:'CADASTROS',links:[{id:'colaboradores',name:'Colaboradores'}]}]:[])
+ ];
+}
+function closeOverlay(){
+ for(const [id,closeId] of Object.entries(closeIds)){
+  if(!document.getElementById(id))continue;
+  const button=document.getElementById(closeId);
+  if(button)button.click();else document.getElementById(id)?.remove();
+ }
+}
+function syncActive(){
+ const nav=document.getElementById('ccs-nav');if(!nav)return;
+ if(!Object.values(overlays).some(id=>document.getElementById(id))){
+  const occurrence=app()?.querySelector('[data-act="aba"][data-v="ocorrencias"][aria-selected="true"]');
+  current=occurrence?'nav-occurrences':'nav-events';
+ }
+ nav.querySelectorAll('[data-ccs-action]').forEach(button=>{
+  const active=button.dataset.ccsAction===current;
+  button.classList.toggle('is-active',active);
+  if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
+ });
+}
+function closeMobile(){mobileOpen=false;document.body.classList.remove('ccs-sidebar-mobile-open')}
+function setExpanded(next){expanded=next;document.body.classList.toggle('ccs-sidebar-collapsed',!expanded);try{localStorage.setItem('ccs-nav-collapsed',expanded?'0':'1')}catch(_){}}
+function navigate(id){
+ closeMobile();if(!mode())return;
+ closeOverlay();
+ if(id==='nav-events'||id==='nav-occurrences'){
+  const tab=app()?.querySelector('[data-act="aba"][data-v="'+(id==='nav-events'?'eventos':'ocorrencias')+'"]');
+  if(tab)tab.click();else app()?.querySelector('[data-act="atualizar"]')?.click();
+ }else{
+  const button=document.createElement('button');button.type='button';button.hidden=true;button.dataset.act=id;app().appendChild(button);button.click();button.remove();
+ }
+ current=id;syncActive();
+}
+function build(){
+ const m=mode(),nav=document.getElementById('ccs-nav');
+ if(!m){
+  nav?.remove();document.getElementById('ccs-nav-backdrop')?.remove();
+  document.body.classList.remove('ccs-shell','ccs-sidebar-collapsed','ccs-sidebar-mobile-open');modeSeen='';return;
+ }
+ if(nav&&modeSeen===m){syncActive();return}
+ nav?.remove();document.getElementById('ccs-nav-backdrop')?.remove();modeSeen=m;
+ const backdrop=document.createElement('button');backdrop.id='ccs-nav-backdrop';backdrop.type='button';backdrop.setAttribute('aria-label','Fechar menu lateral');backdrop.onclick=closeMobile;document.body.appendChild(backdrop);
+ const sidebar=document.createElement('aside');sidebar.id='ccs-nav';sidebar.setAttribute('aria-label','Navegação do Security CCS');
+ sidebar.innerHTML='<div class="ccs-nav-brand"><strong>SECURITY CCS</strong><button type="button" id="ccs-collapse" aria-label="Recolher ou expandir menu">‹</button></div>'+items().map(group=>
+ '<div class="ccs-nav-group"><div class="ccs-nav-caption">'+group.title+'</div>'+group.links.map(item=>
+ '<button type="button" class="ccs-nav-link" data-ccs-action="'+item.id+'" title="'+item.name+'"><span class="ccs-nav-icon" aria-hidden="true">'+icons[item.id]+'</span><span class="ccs-nav-text">'+item.name+'</span></button>').join('')+'</div>').join('');
+ document.body.appendChild(sidebar);document.body.classList.add('ccs-shell');setExpanded(expanded);
+ sidebar.querySelector('#ccs-collapse').onclick=()=>setExpanded(!expanded);
+ sidebar.querySelectorAll('[data-ccs-action]').forEach(button=>button.onclick=()=>navigate(button.dataset.ccsAction));
+ syncActive();
+}
+document.addEventListener('click',event=>{
+ if(event.target.closest('[data-act="nav-toggle"]')){
+  event.preventDefault();
+  if(window.matchMedia('(max-width:1023px)').matches){mobileOpen=!mobileOpen;document.body.classList.toggle('ccs-sidebar-mobile-open',mobileOpen)}
+  else setExpanded(!expanded);
+ }
+ const tab=event.target.closest('[data-act="aba"]');
+ if(tab){current=tab.dataset.v==='ocorrencias'?'nav-occurrences':'nav-events';queueMicrotask(syncActive)}
+});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobile()});
-const observer=new MutationObserver(()=>{if(syncing)return;syncing=true;queueMicrotask(()=>{syncing=false;build()})});
-function start(){const r=root();if(!r)return;observer.observe(r,{subtree:true,childList:true,attributes:true,attributeFilter:['aria-selected']});build()}
+const observer=new MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;build()})});
+function start(){
+ if(!app())return;
+ observer.observe(app(),{subtree:true,childList:true,attributes:true,attributeFilter:['aria-selected']});
+ // Observe overlays only for visibility changes; avoid observing sidebar changes.
+ const bodyObserver=new MutationObserver(records=>{
+  if(records.some(r=>[...r.addedNodes,...r.removedNodes].some(n=>n.nodeType===1&&n.id&&Object.values(overlays).includes(n.id))))syncActive();
+ });
+ bodyObserver.observe(document.body,{childList:true});
+ build();
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
