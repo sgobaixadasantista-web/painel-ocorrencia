@@ -43,6 +43,47 @@ begin
  if exists(select 1 from public.ocorrencia_ia) then raise exception 'campo leu analises IA'; end if;
 end $$;
 reset role;
+-- Central, inteligência e admin devem enxergar todas as pastas de evidências.
+-- Usar números totais somente no banco descartável de testes.
+\set uid_central :uid_central
+select set_config('request.jwt.claim.sub',:'uid_central',true);
+set local role authenticated;
+do $$
+begin
+ if (select count(*) from storage.objects where bucket_id='evidencias') <>
+    (select count(*) from storage.objects where bucket_id='evidencias' and (storage.foldername(name))[1]=auth.uid()::text)
+    and public.perfil_atual()::text <> 'central' then
+    raise exception 'perfil central inesperado';
+ end if;
+ if exists(select 1 from public.historico) then
+   raise exception 'central nao deveria ler historico';
+ end if;
+ if exists(select 1 from public.ocorrencia_ia) then
+   raise exception 'central nao deveria ler IA';
+ end if;
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub',:'uid_inteligencia',true);
+set local role authenticated;
+do $$ begin
+ if public.perfil_atual()::text <> 'inteligencia' then raise exception 'inteligencia sem perfil'; end if;
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub',:'uid_admin',true);
+set local role authenticated;
+do $$ begin
+ if public.perfil_atual()::text <> 'admin' then raise exception 'admin sem perfil'; end if;
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub',:'uid_inativo',true);
+set local role authenticated;
+do $$
+begin
+ if public.perfil_atual() is not null then raise exception 'perfil inativo ativo'; end if;
+ if exists(select 1 from public.eventos) then raise exception 'inativo leu eventos'; end if;
+ if exists(select 1 from storage.objects where bucket_id='evidencias') then raise exception 'inativo leu evidencias'; end if;
+end $$;
+reset role;
 -- Conferência estrutural de política de escrita direta (INSERT/UPDATE/DELETE).
 -- Não executa escrita: as funções RPC são a via autorizada.
 do $$
