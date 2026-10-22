@@ -55,3 +55,34 @@ A ordem deve ser preservada no `index.html`. Não copiar a folha de estilo de um
 - **Responsividade:** cards refluem, filtros quebram linhas, tabelas rolam horizontalmente.
 - **Migração:** não remover classes legadas antes de migrar todos os módulos que as utilizam.
 - **Versionamento:** mudanças incompatíveis exigem nova versão major; componentes novos, minor; correções, patch.
+
+
+## Padrão de navegação v1.0 (22/10/2026)
+
+**Modelo oficial proposto:** sidebar recolhível no desktop e gaveta no mobile, com barra superior permanente. Eliminar botões de módulo amontoados na topbar na migração.
+
+### Hierarquia
+- **Operações:** Visão geral, Ocorrências, Monitoramento GPS.
+- **Gestão:** Efetivo no Turno, Veículo no Turno, Frota e Checklists.
+- **Cadastros:** Colaboradores (e futuros cadastros mestres).
+- **Conta:** Perfil, seleção de visão (se administrador), Sair.
+
+### Contrato visual e de comportamento
+- Desktop >= 1024 px: sidebar expandida de 240 px, recolhível para 64 px; conteúdo usa a largura restante.
+- Mobile < 1024 px: sidebar em gaveta com backdrop, fechada por padrão; fecha ao navegar, no Escape ou no backdrop.
+- Topbar: logomarca/nome, controle do menu, atualização, tema e perfil; nenhuma lista de módulos na barra.
+- Item selecionado destacado por fundo azul profundo e barra laranja, com `aria-current="page"`.
+- Breadcrumb `Visão / Módulo`; título principal por tela; ações específicas alinhadas à direita do título.
+- Módulos de lista: filtros > indicadores > tabela paginada; galerias e edições usam modal interno.
+- Menus obedecem perfil, mas RLS e permissões do backend permanecem obrigatórios.
+- Alvos clicáveis >= 40 px e foco visível; navegação por teclado e labels acessíveis.
+- URLs/rotas deverão preservar a tela selecionada ao atualizar; esta regra exige migração funcional antes de declarar implementação completa.
+
+### Estratégia de migração
+1. Criar shell reutilizável sem modificar dados ou fluxos dos módulos.
+2. Envolver Central/Inteligência com navegação persistente.
+3. Converter módulos atualmente abertos como overlays para views do shell; manter galerias como modais.
+4. Adaptar Campo separadamente para uso operacional mobile.
+5. Testar cada perfil, desktop/mobile, roteamento, volta/refresh e deploy antes de remover menus legados.
+
+**Estado atual:** padrão documentado. O layout/roteamento do sistema existente ainda não foi migrado para esse modelo.
