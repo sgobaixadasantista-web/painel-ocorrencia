@@ -37,3 +37,30 @@ body.ccs-shell .r-topbar-actions [data-act="nav-toggle"]{font-size:23px;min-widt
  body.ccs-shell .r-topbar-brand{grid-area:brand}body.ccs-shell .r-topbar-title{grid-area:title;text-align:left}
  body.ccs-shell .r-topbar-actions{grid-area:actions;max-width:none;overflow:visible}
 }
+
+/* A navegação permanece acessível enquanto módulos antigos abrem.
+   As telas operacionais usam a área ao lado da sidebar, não cobrem o menu. */
+body.ccs-shell #gps-overlay,
+body.ccs-shell #efetivo-overlay,
+body.ccs-shell #veiculos-overlay,
+body.ccs-shell #frota-overlay,
+body.ccs-shell #colab-overlay{
+ left:var(--ccs-sidebar-width)!important;right:0!important;top:0!important;bottom:0!important;
+ width:auto!important;height:100dvh!important;z-index:125!important;box-sizing:border-box;
+}
+body.ccs-shell.ccs-sidebar-collapsed #gps-overlay,
+body.ccs-shell.ccs-sidebar-collapsed #efetivo-overlay,
+body.ccs-shell.ccs-sidebar-collapsed #veiculos-overlay,
+body.ccs-shell.ccs-sidebar-collapsed #frota-overlay,
+body.ccs-shell.ccs-sidebar-collapsed #colab-overlay{left:var(--ccs-sidebar-compact)!important}
+body.ccs-shell #frota-overlay{padding:12px!important}
+@media(max-width:1023px){
+ body.ccs-shell #gps-overlay,body.ccs-shell #efetivo-overlay,
+ body.ccs-shell #veiculos-overlay,body.ccs-shell #frota-overlay,
+ body.ccs-shell #colab-overlay,
+ body.ccs-shell.ccs-sidebar-collapsed #gps-overlay,
+ body.ccs-shell.ccs-sidebar-collapsed #efetivo-overlay,
+ body.ccs-shell.ccs-sidebar-collapsed #veiculos-overlay,
+ body.ccs-shell.ccs-sidebar-collapsed #frota-overlay,
+ body.ccs-shell.ccs-sidebar-collapsed #colab-overlay{left:0!important;right:0!important;width:100%!important}
+}
