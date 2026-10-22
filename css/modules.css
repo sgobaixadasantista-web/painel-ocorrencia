@@ -83,3 +83,30 @@
 #frota-overlay .f-tag.ok{background:#dff4e9;color:#17603b}#frota-overlay .f-tag.bad{background:#ffe2e1;color:#a32121}
 #frota-overlay .f-tag.warn{background:#fff0ce;color:#794d00}#frota-overlay .f-hidden{display:none}
 
+
+/* Frota galeria legada */
+
+#frota-overlay .f-gallery{margin-top:18px;border:1px solid #dce3ea;border-radius:12px;padding:14px;background:#f6f8fb}
+#frota-overlay .f-gallery-stage{display:flex;align-items:center;justify-content:center;gap:10px;background:#0b2942;border-radius:10px;padding:12px}
+#frota-overlay .f-gallery-stage figure{margin:0;min-width:0;flex:1;text-align:center;color:white}
+#frota-overlay .f-gallery-stage img{display:block;max-width:100%;max-height:65vh;object-fit:contain;margin:auto;border-radius:6px}
+#frota-overlay .f-gallery-stage figcaption{padding-top:10px}
+#frota-overlay .f-gallery-stage button{font-size:26px;background:#244660;flex:none}
+#frota-overlay .f-gallery-thumbs{display:flex;gap:10px;overflow-x:auto;padding:12px 0}
+#frota-overlay .f-gallery-thumbs button{flex:0 0 110px;background:white;color:#0b2942;border:2px solid transparent;padding:5px;font-size:11px}
+#frota-overlay .f-gallery-thumbs button[aria-pressed=true]{border-color:#f58220}
+#frota-overlay .f-gallery-thumbs img{width:100%;height:72px;object-fit:cover;border-radius:4px}
+#frota-overlay .f-gallery-thumbs span{display:block;white-space:normal}
+
+
+/* Colaboradores */
+#colab-overlay{position:fixed;inset:0;background:#0b2942e8;z-index:10002;overflow:auto;padding:18px;color:#0b2942;font:14px Inter,Arial}#colab-overlay .colab-panel{max-width:1200px;margin:auto;background:#f6f8fb;border-radius:12px;padding:20px}#colab-overlay header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}#colab-overlay button{border:0;border-radius:6px;background:#0b2942;color:white;padding:9px 12px;cursor:pointer}#colab-overlay input,#colab-overlay select{padding:10px;border:1px solid #bccbd7;border-radius:6px;max-width:100%;box-sizing:border-box;background:white;color:#0b2942}#colab-overlay label{display:flex;flex-direction:column;gap:5px}#colab-overlay .colab-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:12px;margin-bottom:14px}#colab-overlay section{background:white;padding:16px;margin-top:16px;border-radius:8px}#colab-overlay .colab-scroll{overflow-x:auto}#colab-overlay table{width:100%;border-collapse:collapse;background:white;margin-top:12px}#colab-overlay td,#colab-overlay th{padding:10px;text-align:left;border-bottom:1px solid #ddd}
+
+/* GPS mapa modal */
+
+#gps-map-modal{position:fixed;inset:0;z-index:20000;background:#061b2de8;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box}
+#gps-map-modal .gps-map-dialog{width:min(1000px,100%);max-height:94vh;overflow:auto;background:#fff;color:#0b2942;padding:16px;border-radius:14px;box-sizing:border-box}
+#gps-map-modal .gps-map-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+#gps-map-modal button{background:#0b2942;color:#fff;border:0;border-radius:7px;padding:9px 13px;cursor:pointer}
+#gps-map-modal #gps-map{height:clamp(320px,65vh,650px);border-radius:8px}
+
