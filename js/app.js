@@ -115,7 +115,6 @@
   function topbarHtml() {
     var u = S.usuario;
     var acoes = S.tela === 'painel' ? (
-      '<button type="button" data-act="nav-toggle" aria-label="Abrir menu de navegação" title="Menu">☰</button>' +
       '<button type="button" data-act="atualizar" aria-label="Atualizar agora" title="Atualizar agora">' + ico('atualizar') + '</button>' +
       '<button type="button" data-act="tema" aria-label="Alternar tema claro e escuro" title="Alternar tema">' + ico('ajustes') + '</button>' +
       '<button type="button" data-act="usuario" aria-label="Conta de ' + esc(u ? u.nome : '') + '" aria-expanded="' + S.userPop + '" title="Conta">' + ico('usuario') + '</button>' +
@@ -123,8 +122,7 @@
         (D.modo === 'demo' ? '<p class="profile-email">Modo demonstração</p><label class="r-check"><input type="checkbox" data-act="demo-offline"' + (S.demoOff ? ' checked' : '') + '>Simular sem sinal</label>' : '<p class="profile-email">' + esc(u.email || '') + '</p>') +
         visaoHtml() + '<div class="profile-footer"><button type="button" class="profile-logout" data-act="sair">Sair da conta</button></div></div>' : '')
     ) : (S.tela === 'proibido' ? '<button type="button" data-act="tema" aria-label="Alternar tema claro e escuro" title="Alternar tema">' + ico('ajustes') + '</button>' : '<button type="button" data-act="tema" aria-label="Alternar tema claro e escuro" title="Alternar tema">' + ico('ajustes') + '</button>');
-    return '<header class="r-topbar"><div class="r-topbar-brand"><img class="r-topbar-logo" src="' + LOGO_ESCURO + '" alt="Rumo"></div>' +
-      '<div class="r-topbar-title">Security Rumo</div><div class="r-topbar-actions">' + acoes + '</div></header>';
+    return '<header class="r-topbar ccs-topbar"><div class="ccs-topbar-left"><button type="button" class="ccs-topbar-menu" data-act="nav-toggle" aria-label="Abrir ou recolher menu" title="Menu de navegação">☰</button><div class="ccs-topbar-identity"><strong>SECURITY CCS</strong><small>' + (S.tela === 'painel' ? (ehIntel() ? 'Inteligência' : ehCampo() ? 'Campo' : 'Central') : 'Painel de segurança') + '</small></div></div><div class="r-topbar-actions ccs-topbar-actions">' + acoes + '</div></header>';
   }
   function estado(tipo, titulo, msg, acao) {
     var ic = { empty: 'documento', error: 'erro', offline: 'offline', forbidden: 'bloqueado' }[tipo];
