@@ -84,6 +84,45 @@ begin
  if exists(select 1 from storage.objects where bucket_id='evidencias') then raise exception 'inativo leu evidencias'; end if;
 end $$;
 reset role;
+-- Privilégios diretos são compartilhados pelo papel SQL authenticated,
+-- independentemente do perfil de negócio. Não devem permitir gravação direta.
+do $$
+declare tabela text; operacao text;
+begin
+ foreach tabela in array array['eventos','evento_fotos','ocorrencias',
+   'ocorrencia_analises','historico','ocorrencia_ia','contadores'] loop
+   foreach operacao in array array['INSERT','UPDATE','DELETE'] loop
+     if has_table_privilege('authenticated','public.'||tabela,operacao) then
+       raise exception 'Gravação direta concedida: %.%',tabela,operacao;
+     end if;
+   end loop;
+ end loop;
+end $$;
+
+-- Teste efetivo da tentativa de autopromoção: se houver linha de perfil de
+-- campo na base local, UPDATE deve afetar zero linhas. ROLLBACK desfaz tudo.
+select set_config('request.jwt.claim.sub',:'uid_campo',true);
+set local role authenticated;
+do $$
+declare linhas integer;
+begin
+ update public.perfis set perfil='admin' where id=auth.uid();
+ get diagnostics linhas = row_count;
+ if linhas <> 0 then raise exception 'Campo conseguiu promover próprio perfil'; end if;
+end $$;
+reset role;
+-- Um administrador ativo deve conseguir usar a política de UPDATE.
+select set_config('request.jwt.claim.sub',:'uid_admin',true);
+set local role authenticated;
+do $$
+declare linhas integer;
+begin
+ update public.perfis set nome=nome where id=auth.uid();
+ get diagnostics linhas = row_count;
+ if linhas <> 1 then raise exception 'Admin não conseguiu atualizar próprio perfil'; end if;
+end $$;
+reset role;
+
 -- Conferência estrutural de política de escrita direta (INSERT/UPDATE/DELETE).
 -- Não executa escrita: as funções RPC são a via autorizada.
 do $$
