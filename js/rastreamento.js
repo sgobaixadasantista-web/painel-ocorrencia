@@ -79,13 +79,7 @@
     const overlay=document.createElement('div');overlay.id='gps-overlay';
     overlay.innerHTML='<header class="gps-header ccs-module-topbar"><div class="ccs-module-brand"><strong>SECURITY CCS</strong><small>Monitoramento GPS</small></div><div class="ccs-module-actions"><button type="button" id="gps-refresh">Atualizar</button> <button type="button" id="gps-close">Voltar ao painel</button></div></header><main class="gps-main"><div class="gps-intro"><h2>Posicionamento das equipes</h2><p id="gps-status" role="status">Carregando posições...</p></div><div class="gps-cards"><article><span>Equipes monitoradas</span><strong id="gps-total">0</strong></article><article><span>Online</span><strong id="gps-online">0</strong></article><article><span>Offline</span><strong id="gps-offline">0</strong></article><article><span>Visíveis no filtro</span><strong id="gps-visible">0</strong></article></div><div class="gps-layout"><section class="gps-table-card"><h3>Equipes em campo</h3><div class="gps-filters"><input id="gps-search" type="search" placeholder="Pesquisar equipe ou dispositivo" aria-label="Pesquisar equipe"><select id="gps-filter" aria-label="Filtrar conexão"><option value="TODOS">Todas as conexões</option><option value="ONLINE">Online</option><option value="OFFLINE">Offline</option></select></div><div class="r-table-wrap gps-scroll"><table class="r-table"><thead><tr><th>Equipe</th><th>Conexão</th><th>Bateria</th><th>Última coleta</th><th>Modo</th><th>Ação</th></tr></thead><tbody id="gps-teams"></tbody></table></div></section></div></main>';
     /* Estilos carregados por css/modules.css */
-    if(!document.getElementById('gps-map-modal-css')){const modalCss=document.createElement('style');modalCss.id='gps-map-modal-css';modalCss.textContent=`
-#gps-map-modal{position:fixed;inset:0;z-index:20000;background:#061b2de8;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box}
-#gps-map-modal .gps-map-dialog{width:min(1000px,100%);max-height:94vh;overflow:auto;background:#fff;color:#0b2942;padding:16px;border-radius:14px;box-sizing:border-box}
-#gps-map-modal .gps-map-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-#gps-map-modal button{background:#0b2942;color:#fff;border:0;border-radius:7px;padding:9px 13px;cursor:pointer}
-#gps-map-modal #gps-map{height:clamp(320px,65vh,650px);border-radius:8px}
-`;document.head.appendChild(modalCss);}
+    /* Estilos do modal em css/modules.css */
     document.body.appendChild(overlay);
     document.getElementById('gps-close').onclick=close;
     document.getElementById('gps-refresh').onclick=refresh;
