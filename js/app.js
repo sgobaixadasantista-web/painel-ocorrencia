@@ -115,10 +115,11 @@
   function topbarHtml() {
     var u = S.usuario;
     var acoes = S.tela === 'painel' ? (
-      ((u && ['admin','central'].includes(u.perfil)) ? '<button type="button" data-act="frota" title="Cadastro de frota e checklist de 15 dias" style="font-weight:700;font-size:12px">FROTA</button>' : '') +
-      '<button type="button" data-act="veiculo-turno" aria-label="Veículo no Turno" title="Veículo no Turno" style="font-weight:700;font-size:12px">VEÍCULO</button>' +
-      '<button type="button" data-act="efetivo-turno" aria-label="Efetivo no Turno" title="Efetivo no Turno" style="font-weight:700;font-size:12px">EFETIVO</button>' +
-      '<button type="button" data-act="mapa-gps" aria-label="Rastreamento GPS" title="Mapa das equipes" style="font-weight:700;font-size:12px">GPS</button>' +
+      ((u && ['admin','central'].includes(u.perfil)) ? '<button type="button" data-act="colaboradores" class="ccs-nav-action" title="Cadastro de colaboradores">COLABORADORES</button>' : '') +
+      ((u && ['admin','central'].includes(u.perfil)) ? '<button type="button" data-act="frota" title="Cadastro de frota e checklist de 15 dias" class="ccs-nav-action" class="ccs-nav-action">FROTA</button>' : '') +
+      '<button type="button" data-act="veiculo-turno" aria-label="Veículo no Turno" title="Veículo no Turno" class="ccs-nav-action" class="ccs-nav-action">VEÍCULO</button>' +
+      '<button type="button" data-act="efetivo-turno" aria-label="Efetivo no Turno" title="Efetivo no Turno" class="ccs-nav-action" class="ccs-nav-action">EFETIVO</button>' +
+      '<button type="button" data-act="mapa-gps" aria-label="Rastreamento GPS" title="Mapa das equipes" class="ccs-nav-action" class="ccs-nav-action">GPS</button>' +
       '<button type="button" data-act="atualizar" aria-label="Atualizar agora" title="Atualizar agora">' + ico('atualizar') + '</button>' +
       '<button type="button" data-act="tema" aria-label="Alternar tema claro e escuro" title="Alternar tema">' + ico('ajustes') + '</button>' +
       '<button type="button" data-act="usuario" aria-label="Conta de ' + esc(u ? u.nome : '') + '" aria-expanded="' + S.userPop + '" title="Conta">' + ico('usuario') + '</button>' +
@@ -688,7 +689,8 @@
     if (S.userPop && !ev.target.closest('.userpop') && !(t && t.getAttribute('data-act') === 'usuario')) { S.userPop = false; renderTopbar(); }
     if (!t) { var tr = ev.target.closest('tr[data-id]'); if (tr && S.tela === 'painel') abrir(tr.getAttribute('data-id')); return; }
     var a = t.getAttribute('data-act'), v = t.getAttribute('data-v');
-    if (a === 'frota') { if (window.SecurityFrota) window.SecurityFrota.open(); }
+    if (a === 'colaboradores') { if (window.SecurityColaboradores) window.SecurityColaboradores.show(); }
+    else if (a === 'frota') { if (window.SecurityFrota) window.SecurityFrota.open(); }
     else if (a === 'veiculo-turno') { if (window.SecurityVeiculos) window.SecurityVeiculos.show(); }
     else if (a === 'efetivo-turno') { if (window.SecurityEfetivo) window.SecurityEfetivo.show(); }
     else if (a === 'mapa-gps') { if (window.SecurityTrackingMap) window.SecurityTrackingMap.show(); }
