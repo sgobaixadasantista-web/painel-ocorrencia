@@ -1,2 +1,5 @@
+# O JWT é conferido no handler por meio do token do usuário e da RPC
+# public.perfil_atual(), executada com Authorization: Bearer <token>.
+# Não usar service_role para validar autorização da pessoa.
 [functions.analisar-ocorrencia]
 verify_jwt = false
