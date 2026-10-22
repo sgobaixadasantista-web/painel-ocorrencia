@@ -2,7 +2,7 @@
 'use strict';
 const C=window.PAINEL_CONFIG||{};let sb=null,records=[],page=1;const perPage=15;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const el=id=>document.getElementById(id),fmt=d=>d?new Date(d).toLocaleString('pt-BR'):'—';
+const el=id=>document.getElementById(id),fmt=d=>{if(!d)return '—';const v=new Date(d);return Number.isNaN(v.getTime())?'—':new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}).format(v)};
 async function client(){if(!C.SUPABASE_URL||!C.SUPABASE_ANON_KEY)throw Error('Supabase não configurado.');if(!window.supabase)await new Promise((ok,fail)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';s.onload=ok;s.onerror=fail;document.head.appendChild(s)});return sb||(sb=window.supabase.createClient(C.SUPABASE_URL,C.SUPABASE_ANON_KEY))}
 function filters(){let term=el('ef-search').value.toLocaleLowerCase('pt-BR').trim(),team=el('ef-team').value,shift=el('ef-shift').value,dt=el('ef-date').value;return records.filter(r=>(!term||[r.nome,r.matricula,r.equipe].join(' ').toLocaleLowerCase('pt-BR').includes(term))&&(!team||r.equipe===team)&&(!shift||r.turno_chave===shift)&&(!dt||(r.registrado_em||'').slice(0,10)===dt))}
 function render(){
