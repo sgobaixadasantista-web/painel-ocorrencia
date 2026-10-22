@@ -54,3 +54,17 @@
 .ccs-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .ccs-btn:focus-visible,.ccs-table button:focus-visible{outline:3px solid var(--ccs-accent);outline-offset:2px}
 @media(max-width:650px){.ccs-page{padding:12px}.ccs-modal{padding:14px}.ccs-toolbar>.ccs-field{flex:1 1 100%}}
+
+/* Paleta funcional de ações: uma única fonte para todos os módulos. */
+:root{
+  --ccs-action-primary:#0B2942;
+  --ccs-action-primary-hover:#164A6B;
+  --ccs-action-accent:#F58220;
+  --ccs-action-accent-hover:#E87412;
+  --ccs-action-neutral-bg:#FFFFFF;
+  --ccs-action-neutral-text:#0B2942;
+  --ccs-action-neutral-border:#B9C8D4;
+  --ccs-action-danger:#B42318;
+  --ccs-action-danger-hover:#912018;
+  --ccs-action-focus:#F58220;
+}
