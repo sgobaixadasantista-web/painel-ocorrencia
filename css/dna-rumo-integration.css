@@ -1,0 +1,129 @@
+/* Integração DNA Rumo — estilos transversais do Security CCS.
+   Fonte: DNA-Rumo.zip / project/tokens.json e components/ (Button, DataTable,
+   TextField, StatusBadge, Modal, DashboardTemplate).
+   Carregar após modules.css para normalizar os módulos legados sem mudar JS.
+   A navegação e as galerias mantêm os seus controles próprios. */
+:root{
+  --ccs-ui-primary:var(--rumo-orange);
+  --ccs-ui-primary-text:var(--rumo-on-orange);
+  --ccs-ui-secondary:var(--rumo-accent);
+  --ccs-ui-secondary-text:var(--rumo-on-accent);
+  --ccs-ui-surface:var(--rumo-white);
+  --ccs-ui-canvas:var(--rumo-bg);
+  --ccs-ui-text:var(--rumo-text);
+  --ccs-ui-border:var(--rumo-border);
+  --ccs-ui-muted:var(--rumo-muted);
+  --ccs-ui-danger:var(--status-danger);
+  --ccs-ui-radius:var(--rumo-radius-sm,8px);
+}
+/* Áreas de conteúdo */
+body.ccs-shell #app,
+body.ccs-shell :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay){
+  font-family:var(--font-sans,Inter,system-ui,sans-serif);
+}
+body.ccs-shell :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay){
+  color:var(--ccs-ui-text);
+  background:var(--ccs-ui-canvas);
+}
+body.ccs-shell :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
+  :is(.f-panel,.colab-panel,.f-section,.ef-card,.vt-card,.gps-card,section:not(.ccs-module-topbar)){
+  border-color:var(--ccs-ui-border);
+}
+body.ccs-shell :is(.ccs-card,.r-card,.r-kpi,.r-chart-card){
+  background:var(--ccs-ui-surface);
+  color:var(--ccs-ui-text);
+  border-color:var(--ccs-ui-border);
+}
+body.ccs-shell :is(.ccs-page,.page){min-width:0;}
+/* Tipografia e estados de formulário */
+body.ccs-shell :is(.ccs-field,.r-field) label,
+body.ccs-shell :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay) label{
+  color:var(--ccs-ui-text);
+}
+body.ccs-shell :is(.ccs-input,.ccs-select,.ccs-textarea,.r-input),
+body.ccs-shell :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
+  :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){
+  background:var(--ccs-ui-surface);
+  color:var(--ccs-ui-text);
+  border:1px solid var(--ccs-ui-border);
+  border-radius:var(--ccs-ui-radius);
+  max-width:100%;
+  box-sizing:border-box;
+}
+body.ccs-shell :is(.ccs-input,.ccs-select,.ccs-textarea,.r-input):focus-visible,
+body.ccs-shell :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
+  :is(input,select,textarea):focus-visible{
+  outline:3px solid var(--ccs-ui-secondary);
+  outline-offset:1px;
+}
+body.ccs-shell :is(input,select,textarea,button):disabled{
+  cursor:not-allowed;
+}
+/* Tabelas com cabeçalho e hover consistentes */
+body.ccs-shell :is(.r-table,.ccs-table,.ccs-standard-table),
+body.ccs-shell :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay) table{
+  width:100%;
+  border-collapse:collapse;
+  color:var(--ccs-ui-text);
+  background:var(--ccs-ui-surface);
+}
+body.ccs-shell :is(.r-table,.ccs-table,.ccs-standard-table) thead th,
+body.ccs-shell :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay) table thead th{
+  background:var(--rumo-blue-900);
+  color:#fff;
+  font-weight:700;
+}
+body.ccs-shell :is(.r-table,.ccs-table,.ccs-standard-table) tbody td,
+body.ccs-shell :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay) table tbody td{
+  border-bottom:1px solid var(--ccs-ui-border);
+}
+body.ccs-shell :is(.r-table,.ccs-table,.ccs-standard-table) tbody tr:hover td,
+body.ccs-shell :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay) table tbody tr:hover td{
+  background:var(--ccs-ui-canvas);
+}
+body.ccs-shell :is(.r-table-wrap,.ccs-table-wrap,.f-scroll,.colab-scroll){max-width:100%;overflow-x:auto;}
+/* Botões — primário laranja, secundário azul, neutro contornado, exclusão vermelha */
+body.ccs-shell :is(.ccs-btn,.r-btn){font-family:var(--font-sans,Inter,system-ui,sans-serif);}
+body.ccs-shell :is(.ccs-btn,.r-btn-primary,.ccs-btn--primary){
+  background:var(--ccs-ui-primary);color:var(--ccs-ui-primary-text);
+}
+body.ccs-shell :is(.r-btn-secondary,.ccs-btn--accent,.ccs-btn--secondary){
+  background:var(--ccs-ui-secondary);color:var(--ccs-ui-secondary-text);
+}
+body.ccs-shell :is(.r-btn-outline,.ccs-btn--outline){
+  background:var(--ccs-ui-surface);color:var(--ccs-ui-secondary);border-color:var(--ccs-ui-secondary);
+}
+body.ccs-shell :is(.r-btn-danger,.ccs-btn--danger){
+  background:var(--ccs-ui-danger);color:var(--rumo-on-danger);
+}
+body.ccs-shell :is(.r-btn,.ccs-btn):focus-visible{
+  outline:3px solid var(--ccs-ui-secondary);outline-offset:2px;
+}
+/* Ações dos módulos; exclusões e barra de título são preservadas */
+body.ccs-shell :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
+ :is(button[type="submit"],button.orange,#frota-newvehicle,#frota-newcheck,#colab-add){
+  background:var(--ccs-ui-primary);color:var(--ccs-ui-primary-text);border-color:transparent;
+}
+body.ccs-shell #frota-overlay [data-deletevehicle]{
+  background:var(--ccs-ui-danger);color:var(--rumo-on-danger);border-color:transparent;
+}
+/* Modal e galerias: superfície e estados de foco, sem substituir a experiência de zoom */
+body.ccs-shell :is(.ccs-modal,.r-modal,.ccs-photo-dialog,.gps-map-dialog){
+  background:var(--ccs-ui-surface);color:var(--ccs-ui-text);border-radius:var(--rumo-radius-md,12px);
+}
+body.ccs-shell :is(.ccs-photo-modal,#gps-map-modal) button:focus-visible{
+  outline:3px solid var(--rumo-orange);outline-offset:2px;
+}
+/* Navegação e estados ativos */
+#ccs-nav .ccs-nav-link.is-active{border-left-color:var(--rumo-orange);}
+#ccs-nav .ccs-nav-link:focus-visible{outline:2px solid var(--rumo-orange);outline-offset:2px;}
+body.ccs-shell .r-tab[aria-selected="true"]{border-bottom-color:var(--rumo-orange);color:var(--ccs-ui-secondary);}
+body.ccs-shell :is(.ccs-badge--success,.ccs-badge--warning,.ccs-badge--danger){font-weight:700;}
+@media(max-width:650px){
+ body.ccs-shell :is(.ccs-page,.page){width:100%;}
+ body.ccs-shell :is(.r-table-wrap,.ccs-table-wrap,.f-scroll,.colab-scroll){-webkit-overflow-scrolling:touch;}
+ body.ccs-shell :is(.r-btn,.ccs-btn){min-height:44px;}
+}
+@media(prefers-reduced-motion:reduce){
+ body.ccs-shell :is(.r-btn,.ccs-btn,#ccs-nav .ccs-nav-link){transition:none;}
+}
