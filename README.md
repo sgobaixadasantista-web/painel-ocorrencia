@@ -12,53 +12,46 @@ Cada pessoa abre o painel do seu perfil. O perfil **admin** vê os três e troca
 
 ## Estrutura
 
-```
-index.html                      página (a mesma para os três painéis)
-css/ tokens.css rumo.css app.css   DNA Rumo (tokens e componentes oficiais) + ajustes de layout
-js/config.js                    URL e chave do Supabase, prazos de SLA     <- você edita este
-js/data.js                      acesso aos dados (Supabase ou demonstração)
-js/app.js                       telas e ações da central e da inteligência
-js/campo.js                     painel de campo (registro em etapas, fotos, GPS, sincronização)
-js/fila.js                      fila offline do aparelho (IndexedDB)
-sw.js manifest.webmanifest      app instalável e abertura sem internet
-assets/                         fontes Inter, logos e ícones ferroviários do DNA Rumo
+```text
+index.html                          entrada dos painéis
+css/                                tokens, rumo, app, design-system, navigation,
+                                    photo-gallery e modules
+js/                                 app, data, campo, fila, config, navigation,
+                                    photo-gallery, rastreamento, efetivo,
+                                    veiculos, frota, colaboradores e dados de demonstração
+assets/                             ícones, fontes e imagens
+sw.js                               service worker de cache v3
+manifest.webmanifest                metadados do PWA
 supabase/migrations/
-  001_painel_ocorrencias.sql    tabelas, regras de acesso por perfil, funções do fluxo, fotos
-  002_inteligencia.sql          análises de IA, indicadores e gráficos da inteligência
-  003_campo.sql                 registro sem sinal (horário real, sem duplicar), GPS, contas novas inativas
-  004_tipificacao.sql           natureza > tipo > subtipo (156 combinações), formulários por combinação, triagem única
-  005_agentes_ia.sql            3 agentes de IA e 7 minutas do Rumo - SLA, editáveis só por admin
-supabase/dados/                 planilha de tipificação e configuração dos agentes (fonte dos dados iniciais)
-supabase/atualizar_*.sql        reaplicam a planilha e os agentes sem apagar o que você ajustou
-tools/                          gerar_tipificacao.py e gerar_agentes.py (geram os SQL e os dados da demonstração)
-js/tipificacao-demo.js minutas-demo.js   dados só do modo demonstração (no modo normal vêm do banco)supabase/functions/analisar-ocorrencia/   função segura que chama a IA (a chave fica só no servidor)
-supabase/seed_demo.sql          eventos de exemplo (opcional, só para teste)
+  001_painel_ocorrencias.sql       esquema e fluxo inicial
+  002_inteligencia.sql             complemento de inteligência
+  003_campo.sql                    complemento de campo/offline
+  006_fotos_leitura.sql            correção de leitura de evidências
+supabase/functions/analisar-ocorrencia/
+  index.ts                          integração Supabase
+  handler.ts                        validação, análise OpenAI e persistência
+  handler_test.ts                   testes Deno
+supabase/config.toml                configuração da Edge Function
+tools/testar-cache.js               verificação do precache
+docs/BANCO-PENDENTE.md              lacunas do SQL em relação ao código
 ```
+
+**Pendente:** `004_tipificacao.sql`, `005_agentes_ia.sql`, `supabase/dados/` e `supabase/atualizar_*.sql` não foram localizados no repositório auditado. Não deduzir seu conteúdo nem afirmar instalação integral sem os arquivos originais. Consulte `docs/BANCO-PENDENTE.md`.
 
 ## Como colocar no ar
 
-1. **Crie um projeto** em supabase.com.
-2. **Rode o banco:** *SQL Editor* > cole `001_painel_ocorrencias.sql` > *Run*; depois `002_inteligencia.sql`, `003_campo.sql`, `004_tipificacao.sql` e `005_agentes_ia.sql`. Cada um **uma vez só**, nessa ordem.
-3. **Crie as pessoas:** *Authentication > Users > Add user* (e-mail e senha). Toda conta nova nasce **inativa**: não abre painel nenhum até você liberar.
-4. **Libere cada pessoa e dê o perfil**, no *SQL Editor*:
-   ```sql
-   update public.perfis set perfil = 'campo',        ativo = true, nome = 'Nome' where email = 'campo@empresa.com';
-   update public.perfis set perfil = 'central',      ativo = true, nome = 'Nome' where email = 'central@empresa.com';
-   update public.perfis set perfil = 'inteligencia', ativo = true, nome = 'Nome' where email = 'inteligencia@empresa.com';
-   update public.perfis set perfil = 'admin',        ativo = true, nome = 'Nome' where email = 'voce@empresa.com';
-   ```
-   Perfis: `campo`, `central`, `inteligencia`, `admin`. Para desativar alguém: `update public.perfis set ativo = false where email = '...'`.
-5. **Configure o painel:** em `js/config.js`, preencha `SUPABASE_URL` e `SUPABASE_ANON_KEY` (Supabase > *Project Settings > API*, chave **anon public**).
-6. **Publique a pasta** em hospedagem de arquivos estáticos (Netlify, Vercel, GitHub Pages, servidor interno), com **HTTPS** (obrigatório para o GPS, a câmera e a abertura sem internet).
-7. **Ligue a IA (opcional, só para a inteligência).** Com a [Supabase CLI](https://supabase.com/docs/guides/cli) instalada e ligada ao projeto (`supabase link`):
-   ```
-   supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-   supabase functions deploy analisar-ocorrencia
-   ```
-   Opcional: `supabase secrets set ANTHROPIC_MODEL=<modelo>` (o padrão é `claude-sonnet-5-5`). Sem isso, o botão da IA mostra "a análise por IA ainda não foi configurada" e o resto do painel funciona normalmente.
-8. **(Opcional)** `supabase/seed_demo.sql` cria eventos de exemplo em ambiente de teste.
+> **Atenção:** as migrações 001–003 não criam todos os objetos usados pelos módulos atuais. Esta versão **não é uma instalação completa do zero**; é necessário reconciliar o banco de destino com `docs/BANCO-PENDENTE.md` antes de ativar os módulos dependentes.
 
-Sem preencher o passo 5, o painel abre em **modo demonstração**: dados fictícios, IA simulada, nada gravado. Na demonstração, o menu da conta tem **"Simular sem sinal"**, para ver a fila offline do campo funcionando.
+1. Crie ou selecione um projeto Supabase para validação, sem sobrescrever dados existentes.
+2. Em ambiente **novo de teste**, aplique somente os arquivos SQL existentes, na ordem: `001_painel_ocorrencias.sql`, `002_inteligencia.sql`, `003_campo.sql`. Não tente executar 004 ou 005 ausentes.
+3. Confira as dependências pendentes no banco de destino. Só depois aplique `006_fotos_leitura.sql`, que restringe o bucket privado `evidencias`; revise se objetos antigos seguem a pasta `<auth.uid()>/...`.
+4. Configure usuários e perfis conforme os mecanismos de autenticação e RLS da instância. Não publique acessos sem testar a autorização.
+5. Preencha em `js/config.js` somente URL e chave **anon/publishable** do Supabase. Nunca inclua segredos da IA no navegador.
+6. Publique os arquivos estáticos em HTTPS. Antes, execute `node tools/testar-cache.js` e `node --check sw.js`. O service worker usa cache `v3`.
+7. **IA (opcional):** configure no ambiente da Edge Function `OPENAI_API_KEY`; opcionalmente `OPENAI_MODEL` (padrão `gpt-4o-mini`) e `ALLOWED_ORIGIN` com a origem HTTPS exata do painel. Apenas em desenvolvimento o valor padrão de `ALLOWED_ORIGIN` é `*`. A função chama `https://api.openai.com/v1/chat/completions` e interpreta `choices[0].message.content`. Publique com `supabase functions deploy analisar-ocorrencia`. O token Bearer é validado no handler por `perfil_atual`, conforme `supabase/config.toml`.
+8. Execute `deno test supabase/functions/analisar-ocorrencia/handler_test.ts` onde o Deno estiver instalado. Depois valide o fluxo com contas reais autorizadas.
+
+**Não foi feita implantação nem migração automática por estas instruções.** O modo demonstração não confirma o funcionamento do banco real.
 
 ## Painel de campo: como funciona sem sinal
 
@@ -75,51 +68,29 @@ Sem preencher o passo 5, o painel abre em **modo demonstração**: dados fictíc
 
 ## Tipificação e formulários
 
-Na triagem, a central escolhe **Natureza ➜ Tipo ➜ Subtipo** (156 combinações, vindas da planilha da Rumo) e cada combinação **abre o formulário de referência** com os campos daquele caso.
+O frontend consulta `tipificacao`, `formularios` e `triar_evento` (ver `js/data.js`), mas as migrações presentes 001–003 não incluem esses objetos. Os arquivos 004 e os dados iniciais são **pendentes**. O código de demonstração não substitui o esquema de produção. **Não executar a triagem em uma instância nova** até recuperar e validar o SQL original.
 
-- **9 formulários:** composição, via, apreensão, pessoas, acidente, obstrução, manutenção, prevenção e básico. Cada combinação aponta para um deles (tabela `tipificacao`, coluna `formulario`).
-- **Campos obrigatórios:** só o km (e, na apreensão, o material localizado). O resto é opcional e fica recolhido por grupo (composição, local, estatística).
-- **Formato dos campos:** km sempre como `115+500` (a tela converte `115,500`), horas como `HH:MM`, quantidade de material **só como número de recipientes**, sem peso nem litros.
-- **Natureza criminal** cria a ocorrência para a inteligência; **mecânica, social e natural** são finalizadas pela central, com observação. Nos dois casos ficam gravados a tipificação e os dados do formulário.
-- **Para ajustar:** *Table Editor* > `formularios` (campos, em JSON) e `tipificacao` (qual formulário cada combinação abre). Cada mudança nos campos sobe a versão e registra quem mudou. Se a planilha da Rumo mudar, gere o SQL de novo com `python3 tools/gerar_tipificacao.py planilha.xlsx` e rode `supabase/atualizar_tipificacao.sql`: combinações que saírem da planilha ficam inativas, sem quebrar registros antigos.
-- A triagem passa por **uma única função do banco** (`triar_evento`), que valida o formulário. Não existe caminho para pular os campos obrigatórios.
+## Como a IA funciona — implementação atual
 
-## Como a IA funciona (3 agentes em cadeia)
+**Provedor: OpenAI.** A Edge Function `analisar-ocorrencia` usa **uma única chamada** ao endpoint Chat Completions, com modelo configurável por `OPENAI_MODEL` (padrão `gpt-4o-mini`) e segredo `OPENAI_API_KEY`.
 
-A inteligência clica em **Analisar com IA** na ocorrência. A função do Supabase confere login e perfil (só `inteligencia` e `admin`), lê o registro com as regras de acesso da pessoa e roda os 3 agentes do Rumo - SLA:
+O handler confere a sessão e o perfil via `perfil_atual` (somente `inteligencia` ou `admin`), consulta `v_fila_ocorrencias` pelas permissões do solicitante, monta o registro com limites de caracteres, trata o conteúdo do relato como dado e não como instrução, extrai/valida a resposta JSON e envia a análise pela RPC `salvar_analise_ia`. A minuta é limitada a 1.200 caracteres e a nota é normalizada para 0–10. É necessário revisar a análise antes de uso oficial.
 
-| Ordem | Agente | O que entrega |
-|---|---|---|
-| 1 | Analista de Qualidade de Registros | Dados extraídos para o boletim, nota de 0 a 10, viabilidade de BO e relatório estatístico padronizado |
-| 2 | Especialista em Tipificação Penal | Artigo do Código Penal (uso interno) e o **número** da minuta aplicável |
-| 3 | Redator Técnico de BO | Parecer final de até 1.200 caracteres, pronto para a Delegacia Digital |
-
-**Os textos dos agentes e das minutas são os do Rumo - SLA, sem alteração.** Só o formato de saída da IA foi adaptado (JSON), para o sistema conseguir ler. Ficam nas tabelas `agentes_ia` e `minutas_bo`: só o admin edita, e cada análise guarda a versão usada.
-
-O que os textos só **pediam** à IA, o sistema **confere por código**:
-- só as seções 1 a 3 do agente 1 seguem adiante; o relatório estatístico (com o nome do maquinista) nunca chega ao redator;
-- a IA escolhe o número da minuta; **o texto aprovado vem do cadastro** e nunca é reescrito por ela;
-- se o agente 1 diz "SEM BO APLICÁVEL", os agentes 2 e 3 nem rodam e nenhuma chamada de IA é gasta;
-- o parecer passa por 10 verificações feitas pelo sistema: até 1.200 caracteres (contados por código), sem colchetes, abertura e encerramento exatos, bloco de modus operandi intacto, sem termos proibidos, siglas, datas e horários, pessoas, peso e volume;
-- se uma verificação falha, o redator tenta de novo uma vez; se continuar falhando, o texto é gravado com **"ATENÇÃO: REVISAR MANUALMENTE"** e as falhas à vista;
-- o relatório estatístico tem o formato normalizado (km `120,570` vira `120+570`, valor fora do padrão vira `NÃO INFORMADO`).
-
-**O texto da IA é uma sugestão: quem registra o boletim confere cada fato.** Além disso: o texto do registro é tratado como dado, não como instrução; a resposta é validada antes de gravar; há no máximo uma análise a cada 15 segundos por ocorrência. As perguntas que dependem do jurídico e da operação estão em um documento à parte (veja a lista de perguntas entregue junto).
+**Pendente:** a arquitetura documentada anteriormente de três agentes encadeados, minutas fixas de cadastro e dez verificações não está implementada no handler atual. Não implementá-la sem recuperar `005_agentes_ia.sql` e confirmar os objetos `agentes_ia` e `minutas_bo`.
 
 ## Segurança (leia antes de publicar)
 
-- A chave **anon** pode ficar no navegador; a **service_role** e a chave da IA **nunca**. A chave da IA fica nos segredos da função.
-- O navegador **não grava direto nas tabelas**: toda escrita passa por funções do banco que conferem perfil e regras (por exemplo, não dá para fazer a triagem do mesmo evento duas vezes, nem alterar uma classificação).
-- Em *Authentication > Providers > Email*, **desligue "Allow new users to sign up"** se o cadastro deve ser só por convite.
-- **Tipificação, formulários, agentes e minutas** só o admin edita. A IA nunca grava direto: passa pela função do banco, que confere perfil, formato e frequência.
-- **Contas novas nascem inativas.** Como o campo agora grava eventos, ninguém entra só por criar conta.
-- Fotos em bucket **privado**, por links temporários de 1 hora; cada pessoa só envia para a própria pasta e o banco recusa foto de outra pessoa. Campo vê só os eventos que registrou. Análises de IA só são lidas por inteligência e admin; o histórico de auditoria também.
+- A chave pública do Supabase pode ficar no navegador; `service_role` e `OPENAI_API_KEY` não.
+- RLS e autorização por perfil precisam ser validadas no ambiente real. A Edge Function valida o token pelo cliente Supabase vinculado ao usuário e `perfil_atual`.
+- Para o bucket `evidencias`, a migração `006_fotos_leitura.sql` permite leitura completa para `central`, `inteligencia` e `admin`, e somente da pasta do próprio UID para `campo`. As URLs assinadas são geradas em `js/data.js`; `js/photo-gallery.js` apenas as apresenta.
+- A Edge Function restringe `Access-Control-Allow-Origin` via `ALLOWED_ORIGIN`; configure a origem exata de produção.
+- Tipificação, formulários, agentes e minutas exigem as migrações faltantes para verificar suas regras efetivas.
 
 ## Suposições a validar com a Rumo
 
-As perguntas completas, com o que o sistema faz hoje em cada caso, estão na lista de perguntas ao jurídico e à operação. As principais:
+As regras a seguir precisam de validação jurídica e operacional; algumas dependem das migrações pendentes. As principais:
 
-- **Textos fixos das minutas** afirmam fatos (escolta informou, patrulhamento, preservação do material) que o registro pode não conter. O sistema usa o texto aprovado sem alterar.
+- **Textos fixos das minutas** afirmam fatos (escolta informou, patrulhamento, preservação do material) que o registro pode não conter. A recuperação das minutas cadastradas está pendente.
 - **Cobertura:** não há minuta para roubo, ataques, incêndio criminoso, receptação nem dano em instalações de via; esses casos terminam em "SEM PARECER".
 - **Natureza x classificação:** a natureza da triagem e a classificação da inteligência são tratadas como campos separados.
 - **Formulários:** os 9 formulários e os campos obrigatórios são proposta nossa, a partir dos dados que os agentes pedem.
@@ -131,12 +102,9 @@ As perguntas completas, com o que o sistema faz hoje em cada caso, estão na lis
 
 ## O que foi testado
 
-- **Banco (Postgres real, com as peças do Supabase simuladas):** permissões por perfil, leitura restrita, bloqueio de escrita direta, triagem com validação dos formulários, 156 combinações, agentes e minutas (texto idêntico ao do Rumo - SLA), numeração, fotos, indicadores.
-- **Cadeia dos 3 agentes, contra o banco real (72 verificações):** ordem e entradas de cada agente, relatório estatístico que não segue adiante, texto da minuta vindo do cadastro, encerramentos, nova tentativa e "revisar manualmente", as 7 minutas preenchidas passando nas 10 verificações, erros típicos barrados. A chamada à API da Anthropic foi simulada.
-- **Painéis (navegador, modo demonstração):** os três fluxos completos, filtros, exportação, tema escuro, celular. No campo: GPS, fotos reduzidas, rascunho, fila offline com recarga da página no meio, reenvio sem duplicar, erro de validação e abertura sem internet (service worker).
-- **Camada do Supabase (cliente simulado):** consultas, funções, fotos assinadas, tempo real, login, mensagens de erro e roteamento por perfil.
+Os arquivos 001–003 e os caminhos de uso de SQL foram inspecionados no repositório. A existência das referências estáticas do `index.html` e dos recursos adicionais no cache foi conferida por leitura do repositório. Foi incluído `tools/testar-cache.js` para repetir a checagem no clone e `handler_test.ts` com casos de extração de JSON, formato inválido, status inesperado, nota normalizada e limites de caracteres.
 
-**Ainda não testado contra serviços reais:** o projeto Supabase de verdade (e-mail do login, tempo real ao vivo, upload de fotos), a **chamada real à IA** e **aparelhos reais** (câmera, GPS e instalação no celular foram simulados no navegador). Antes de liberar para a equipe, teste com a conta de um colega e analise uma ocorrência de teste.
+**Ainda não executado nesta revisão:** `deno test` (Deno não instalado no ambiente disponível), testes autenticados de RLS/Storage, integração com a API OpenAI, testes visuais de navegador, migrações reais e implantação. Consulte os resultados de checks da entrega; não considerar esses fluxos aprovados sem execução.
 
 ## Próximos passos naturais
 
