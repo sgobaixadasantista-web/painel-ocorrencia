@@ -140,12 +140,12 @@
    Não afetam botões da topbar, galerias, mapa ou controles da tabela. */
 :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
   :is(button[type="submit"],button.orange,#frota-newvehicle,#frota-newcheck,#colab-add){
-  background:var(--ccs-action-accent);color:var(--ccs-action-primary);border:1px solid transparent;
+  background:var(--rumo-orange);color:var(--rumo-on-orange);border:1px solid transparent;
   font-weight:700;
 }
 :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
   :is(button[type="submit"],button.orange,#frota-newvehicle,#frota-newcheck,#colab-add):hover:not(:disabled){
-  background:var(--ccs-action-accent-hover);
+  background:var(--ccs-action-primary-hover);
 }
 :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
   :is(button,#gps-refresh,#ef-refresh,#vt-refresh,#frota-refresh){
@@ -167,10 +167,10 @@
 :is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
   :is(#gps-refresh,#ef-refresh,#vt-refresh,#frota-refresh,
   #ef-clear,#vt-clear,#frota-cancel,#colab-close,#gps-close,#ef-close,#vt-close,#frota-close):hover:not(:disabled){
-  background:#EAF0F5;border-color:var(--ccs-action-primary-hover);
+  background:var(--rumo-bg);border-color:var(--rumo-accent);
 }
 #frota-overlay [data-deletevehicle]{
-  background:var(--ccs-action-danger);color:#fff;border:1px solid transparent;
+  background:var(--status-danger);color:var(--rumo-on-danger);border:1px solid transparent;
 }
 #frota-overlay [data-deletevehicle]:hover:not(:disabled){background:var(--ccs-action-danger-hover)}
 /* Barra azul: ações contrastantes, distintas das ações de conteúdo. */
@@ -182,3 +182,7 @@
   .ccs-module-topbar :is(#gps-refresh,#ef-refresh,#vt-refresh,#frota-refresh,#gps-close,#ef-close,#vt-close,#frota-close,#colab-close):hover:not(:disabled){
   background:#ffffff2b;border-color:#ffffff60;
 }
+
+/* DNA Rumo: controles de conteúdo em 44px, com ações auxiliares compactas em tabelas. */
+:is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay) button:not(.ccs-module-topbar button){min-height:44px}
+:is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay) :is(table, .f-gallery, .vt-thumbs, .f-gallery-thumbs) button{min-height:36px}
