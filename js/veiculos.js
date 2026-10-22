@@ -27,17 +27,7 @@ async function gallery(item,which){
  const sb=await getClient(),photos=[['foto_placa_path','Placa'],['foto_odometro_path','Odômetro']];
  const images=(await Promise.all(photos.map(async ([field,label])=>{if(!item[field])return null;const r=await sb.storage.from('veiculo-turno-fotos').createSignedUrl(item[field],600);return r.error?null:{label,url:r.data.signedUrl}}))).filter(Boolean);
  if(!images.length)throw Error('Nenhuma foto disponível neste registro.');
- const old=el('vt-modal');if(old)old.remove();
- const area=document.createElement('div');area.id='vt-modal';area.className='vt-modal';area.setAttribute('role','dialog');area.setAttribute('aria-modal','true');area.setAttribute('aria-label','Galeria de fotos do veículo '+(item.placa||''));
- let pos=Math.max(0,images.findIndex(p=>p.label===(which==='foto_placa_path'?'Placa':'Odômetro')));
- area.innerHTML='<section class="vt-gallery"><div class="vt-ghead"><h3>Fotos do veículo · '+esc(item.placa)+'</h3><button type="button" id="vt-photo-close" aria-label="Fechar galeria">✕ Fechar</button></div><div class="vt-stage"><button type="button" id="vt-prev-photo" aria-label="Foto anterior">‹</button><figure><img id="vt-large" alt=""><figcaption id="vt-caption"></figcaption></figure><button type="button" id="vt-next-photo" aria-label="Próxima foto">›</button></div><div class="vt-thumbs" id="vt-thumbs"></div></section>';
- el('veiculos-overlay').appendChild(area);
- const previousFocus=document.activeElement,close=()=>{area.remove();document.removeEventListener('keydown',keyHandler);if(previousFocus?.focus)previousFocus.focus()};
- const img=el('vt-large'),caption=el('vt-caption'),thumb=el('vt-thumbs');
- thumb.innerHTML=images.map((p,n)=>'<button type="button" data-thumb="'+n+'"><img src="'+esc(p.url)+'" alt="'+esc(p.label)+'"><span>'+esc(p.label)+'</span></button>').join('');
- function set(n){pos=(n+images.length)%images.length;img.src=images[pos].url;img.alt=images[pos].label;caption.textContent=images[pos].label+' · '+(pos+1)+' de '+images.length;thumb.querySelectorAll('button').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===pos)))}
- function keyHandler(e){if(!area.isConnected){document.removeEventListener('keydown',keyHandler);return;}if(e.key==='Escape')close();else if(e.key==='ArrowLeft')set(pos-1);else if(e.key==='ArrowRight')set(pos+1)}
- el('vt-photo-close').onclick=close;el('vt-prev-photo').onclick=()=>set(pos-1);el('vt-next-photo').onclick=()=>set(pos+1);thumb.querySelectorAll('button').forEach(b=>b.onclick=()=>set(Number(b.dataset.thumb)));area.addEventListener('click',e=>{if(e.target===area)close()});document.addEventListener('keydown',keyHandler);set(pos);el('vt-photo-close').focus();
+ window.CCSPhotoGallery.open({title:'Fotos do veículo · '+(item.placa||''),images,index:Math.max(0,images.findIndex(p=>p.label===(which==='foto_placa_path'?'Placa':'Odômetro')))});
 }
 async function refresh(){
  el('veiculos-status').textContent='Atualizando registros...';
