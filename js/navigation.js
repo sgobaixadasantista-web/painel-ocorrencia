@@ -4,7 +4,9 @@
 const app=()=>document.getElementById('app');
 const overlays={'mapa-gps':'gps-overlay','efetivo-turno':'efetivo-overlay','veiculo-turno':'veiculos-overlay','frota':'frota-overlay','colaboradores':'colab-overlay'};
 const closeIds={'gps-overlay':'gps-close','efetivo-overlay':'ef-close','veiculos-overlay':'vt-close','frota-overlay':'frota-close','colab-overlay':'colab-close'};
-const icons={'nav-events':'▤','nav-occurrences':'▥','mapa-gps':'◎','efetivo-turno':'♙','veiculo-turno':'▣',frota:'▦',colaboradores:'♧'};
+const icons={'nav-events':'documento','nav-occurrences':'checklist','mapa-gps':'localizar','efetivo-turno':'equipe','veiculo-turno':'vagao',frota:'seguranca',colaboradores:'usuario'};
+function icon(name){const paths=window.RUMO_ICONS?.[name];if(!paths)return '';return '<svg class="ccs-nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths.map(p=>'<path d="'+p+'"/>').join('')+'</svg>'}
+
 let expanded=true,mobileOpen=false,modeSeen='',current='nav-events',queued=false;
 try{expanded=localStorage.getItem('ccs-nav-collapsed')!=='1'}catch(_){}
 function mode(){
@@ -66,7 +68,7 @@ function build(){
  const sidebar=document.createElement('aside');sidebar.id='ccs-nav';sidebar.setAttribute('aria-label','Navegação do Security CCS');
  sidebar.innerHTML='<div class="ccs-nav-brand"><strong>SECURITY CCS</strong><button type="button" id="ccs-collapse" aria-label="Recolher ou expandir menu">‹</button></div>'+items().map(group=>
  '<div class="ccs-nav-group"><div class="ccs-nav-caption">'+group.title+'</div>'+group.links.map(item=>
- '<button type="button" class="ccs-nav-link" data-ccs-action="'+item.id+'" title="'+item.name+'"><span class="ccs-nav-icon" aria-hidden="true">'+icons[item.id]+'</span><span class="ccs-nav-text">'+item.name+'</span></button>').join('')+'</div>').join('');
+ '<button type="button" class="ccs-nav-link" data-ccs-action="'+item.id+'" title="'+item.name+'"><span class="ccs-nav-icon" aria-hidden="true">'+icon(icons[item.id])+'</span><span class="ccs-nav-text">'+item.name+'</span></button>').join('')+'</div>').join('');
  document.body.appendChild(sidebar);document.body.classList.add('ccs-shell');setExpanded(expanded);
  sidebar.querySelector('#ccs-collapse').onclick=()=>setExpanded(!expanded);
  sidebar.querySelectorAll('[data-ccs-action]').forEach(button=>button.onclick=()=>navigate(button.dataset.ccsAction));
