@@ -110,3 +110,27 @@
 #gps-map-modal button{background:#0b2942;color:#fff;border:0;border-radius:7px;padding:9px 13px;cursor:pointer}
 #gps-map-modal #gps-map{height:clamp(320px,65vh,650px);border-radius:8px}
 
+
+/* Tabelas operacionais: padrão único de Ocorrências */
+
+#efetivo-overlay .r-table-wrap,
+#veiculos-overlay .r-table-wrap,
+#frota-overlay .r-table-wrap{overflow-x:auto;background:var(--rumo-white,#fff);border:1px solid var(--rumo-border,#dce3ea);border-radius:10px;box-shadow:var(--rumo-shadow-card,0 2px 9px #001a2b0c)}
+#efetivo-overlay table.ccs-standard-table,
+#veiculos-overlay table.ccs-standard-table,
+#frota-overlay table.ccs-standard-table{width:100%;border-collapse:collapse;border-spacing:0;min-width:650px;font-size:13px;line-height:18px}
+#efetivo-overlay table.ccs-standard-table thead th,
+#veiculos-overlay table.ccs-standard-table thead th,
+#frota-overlay table.ccs-standard-table thead th{background:var(--rumo-blue-900,#0b2942);color:#fff;font-weight:700;text-align:left;white-space:nowrap;padding:12px 14px;border:0}
+#efetivo-overlay table.ccs-standard-table tbody td,
+#veiculos-overlay table.ccs-standard-table tbody td,
+#frota-overlay table.ccs-standard-table tbody td{background:var(--rumo-white,#fff);color:var(--rumo-text,#0b2942);padding:12px 14px;border-bottom:1px solid var(--rumo-border,#dce3ea);vertical-align:middle}
+#efetivo-overlay table.ccs-standard-table tbody tr:hover td,
+#veiculos-overlay table.ccs-standard-table tbody tr:hover td,
+#frota-overlay table.ccs-standard-table tbody tr:hover td{background:var(--rumo-bg,#f2f5f8)}
+#efetivo-overlay table.ccs-standard-table tbody tr:last-child td,
+#veiculos-overlay table.ccs-standard-table tbody tr:last-child td,
+#frota-overlay table.ccs-standard-table tbody tr:last-child td{border-bottom:0}
+#efetivo-overlay table.ccs-standard-table button,
+#veiculos-overlay table.ccs-standard-table button,
+#frota-overlay table.ccs-standard-table button{width:auto;min-width:unset;height:auto;min-height:32px;padding:7px 10px;border-radius:7px;font-size:12px;white-space:nowrap}
