@@ -9,17 +9,15 @@ export interface Deps {
 }
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const MODELO_PADRAO = 'gpt-4o-mini';
 
-function resp(status: number, corpo: unknown): Response {
-  return new Response(JSON.stringify(corpo), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+function resposta(status: number, corpo: unknown, origem: string): Response {
+  return new Response(JSON.stringify(corpo), { status, headers: { ...CORS, 'Access-Control-Allow-Origin': origem, 'Vary': 'Origin', 'Content-Type': 'application/json' } });
 }
-const falha = (status: number, erro: string, codigo: string) => resp(status, { erro, codigo });
 
 const SISTEMA = [
   'Você é analista de qualidade de registros de ocorrências da segurança ferroviária de uma concessionária.',
@@ -71,7 +69,10 @@ export function validarResultado(r: any): any {
 }
 
 export async function handle(req: Request, d: Deps): Promise<Response> {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+  // Uma origem específica deve ser definida em produção; '*' serve somente ao desenvolvimento.
+  const origem = d.env('ALLOWED_ORIGIN') || '*';
+  const falha = (status: number, erro: string, codigo: string) => resposta(status, { erro, codigo }, origem);
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: { ...CORS, 'Access-Control-Allow-Origin': origem, 'Vary': 'Origin' } });
   if (req.method !== 'POST') return falha(405, 'Método não permitido.', 'metodo');
 
   const auth = req.headers.get('Authorization') || '';
@@ -135,5 +136,5 @@ export async function handle(req: Request, d: Deps): Promise<Response> {
     const status = /ia_recente/.test(salvo.error.message || '') ? 429 : /sem_permissao/.test(salvo.error.message || '') ? 403 : 409;
     return falha(status, hint, String(salvo.error.message || 'salvar'));
   }
-  return resp(200, { ok: true, ia: { id: salvo.data?.id, em: salvo.data?.criado_em, modelo, resultado } });
+  return resposta(200, { ok: true, ia: { id: salvo.data?.id, em: salvo.data?.criado_em, modelo, resultado } }, origem);
 }
