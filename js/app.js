@@ -115,11 +115,7 @@
   function topbarHtml() {
     var u = S.usuario;
     var acoes = S.tela === 'painel' ? (
-      ((u && ['admin','central'].includes(u.perfil)) ? '<button type="button" data-act="colaboradores" class="ccs-nav-action" title="Cadastro de colaboradores">COLABORADORES</button>' : '') +
-      ((u && ['admin','central'].includes(u.perfil)) ? '<button type="button" data-act="frota" title="Cadastro de frota e checklist de 15 dias" class="ccs-nav-action">FROTA</button>' : '') +
-      '<button type="button" data-act="veiculo-turno" aria-label="Veículo no Turno" title="Veículo no Turno" class="ccs-nav-action">VEÍCULO</button>' +
-      '<button type="button" data-act="efetivo-turno" aria-label="Efetivo no Turno" title="Efetivo no Turno" class="ccs-nav-action">EFETIVO</button>' +
-      '<button type="button" data-act="mapa-gps" aria-label="Rastreamento GPS" title="Mapa das equipes" class="ccs-nav-action">GPS</button>' +
+      '<button type="button" data-act="nav-toggle" aria-label="Abrir menu de navegação" title="Menu">☰</button>' +
       '<button type="button" data-act="atualizar" aria-label="Atualizar agora" title="Atualizar agora">' + ico('atualizar') + '</button>' +
       '<button type="button" data-act="tema" aria-label="Alternar tema claro e escuro" title="Alternar tema">' + ico('ajustes') + '</button>' +
       '<button type="button" data-act="usuario" aria-label="Conta de ' + esc(u ? u.nome : '') + '" aria-expanded="' + S.userPop + '" title="Conta">' + ico('usuario') + '</button>' +
