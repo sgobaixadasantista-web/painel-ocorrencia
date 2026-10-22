@@ -14,7 +14,13 @@ insert into teste_ids values
  ('campo', :'uid_campo'::uuid),('central', :'uid_central'::uuid),
  ('inteligencia', :'uid_inteligencia'::uuid),('admin', :'uid_admin'::uuid),
  ('inativo', :'uid_inativo'::uuid);
-do $$
+create temporary table rls_referencia as
+select
+ (select count(*) from storage.objects where bucket_id='evidencias') as arquivos,
+ (select count(*) from public.historico) as historicos,
+ (select count(*) from public.ocorrencia_ia) as analises_ia;
+grant select on rls_referencia to authenticated;
+do $
 declare x record; atual text; total bigint; alheios bigint;
 begin
  for x in select * from teste_ids loop
@@ -51,9 +57,8 @@ set local role authenticated;
 do $$
 begin
  if (select count(*) from storage.objects where bucket_id='evidencias') <>
-    (select count(*) from storage.objects where bucket_id='evidencias' and (storage.foldername(name))[1]=auth.uid()::text)
-    and public.perfil_atual()::text <> 'central' then
-    raise exception 'perfil central inesperado';
+    (select arquivos from rls_referencia) then
+    raise exception 'Central não leu todas as evidências';
  end if;
  if exists(select 1 from public.historico) then
    raise exception 'central nao deveria ler historico';
@@ -67,12 +72,18 @@ select set_config('request.jwt.claim.sub',:'uid_inteligencia',true);
 set local role authenticated;
 do $$ begin
  if public.perfil_atual()::text <> 'inteligencia' then raise exception 'inteligencia sem perfil'; end if;
+ if (select count(*) from storage.objects where bucket_id='evidencias')<>(select arquivos from rls_referencia) then raise exception 'Inteligência sem acesso total às evidências'; end if;
+ if (select count(*) from public.historico)<>(select historicos from rls_referencia) then raise exception 'Inteligência sem acesso total ao histórico'; end if;
+ if (select count(*) from public.ocorrencia_ia)<>(select analises_ia from rls_referencia) then raise exception 'Inteligência sem acesso total à IA'; end if;
 end $$;
 reset role;
 select set_config('request.jwt.claim.sub',:'uid_admin',true);
 set local role authenticated;
 do $$ begin
  if public.perfil_atual()::text <> 'admin' then raise exception 'admin sem perfil'; end if;
+ if (select count(*) from storage.objects where bucket_id='evidencias')<>(select arquivos from rls_referencia) then raise exception 'Admin sem acesso total às evidências'; end if;
+ if (select count(*) from public.historico)<>(select historicos from rls_referencia) then raise exception 'Admin sem acesso total ao histórico'; end if;
+ if (select count(*) from public.ocorrencia_ia)<>(select analises_ia from rls_referencia) then raise exception 'Admin sem acesso total à IA'; end if;
 end $$;
 reset role;
 select set_config('request.jwt.claim.sub',:'uid_inativo',true);
