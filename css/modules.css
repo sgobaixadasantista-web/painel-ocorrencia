@@ -134,3 +134,51 @@
 #efetivo-overlay table.ccs-standard-table button,
 #veiculos-overlay table.ccs-standard-table button,
 #frota-overlay table.ccs-standard-table button{width:auto;min-width:unset;height:auto;min-height:32px;padding:7px 10px;border-radius:7px;font-size:12px;white-space:nowrap}
+
+
+/* Ações compartilhadas dos módulos: variantes por finalidade.
+   Não afetam botões da topbar, galerias, mapa ou controles da tabela. */
+:is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
+  :is(button[type="submit"],button.orange,#frota-newvehicle,#frota-newcheck,#colab-add){
+  background:var(--ccs-action-accent);color:var(--ccs-action-primary);border:1px solid transparent;
+  font-weight:700;
+}
+:is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
+  :is(button[type="submit"],button.orange,#frota-newvehicle,#frota-newcheck,#colab-add):hover:not(:disabled){
+  background:var(--ccs-action-accent-hover);
+}
+:is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
+  :is(button,#gps-refresh,#ef-refresh,#vt-refresh,#frota-refresh){
+  font-family:var(--font-sans,Inter,system-ui,sans-serif);
+  transition:background-color .16s ease,border-color .16s ease,color .16s ease;
+}
+:is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
+  button:focus-visible{
+  outline:3px solid var(--ccs-action-focus);outline-offset:2px;
+}
+:is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
+  button:disabled{opacity:.5;cursor:not-allowed}
+:is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
+  :is(#gps-refresh,#ef-refresh,#vt-refresh,#frota-refresh,
+  #ef-clear,#vt-clear,#frota-cancel,#colab-close,#gps-close,#ef-close,#vt-close,#frota-close){
+  background:var(--ccs-action-neutral-bg);color:var(--ccs-action-neutral-text);
+  border:1px solid var(--ccs-action-neutral-border);font-weight:600;
+}
+:is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#frota-overlay,#colab-overlay)
+  :is(#gps-refresh,#ef-refresh,#vt-refresh,#frota-refresh,
+  #ef-clear,#vt-clear,#frota-cancel,#colab-close,#gps-close,#ef-close,#vt-close,#frota-close):hover:not(:disabled){
+  background:#EAF0F5;border-color:var(--ccs-action-primary-hover);
+}
+#frota-overlay [data-deletevehicle]{
+  background:var(--ccs-action-danger);color:#fff;border:1px solid transparent;
+}
+#frota-overlay [data-deletevehicle]:hover:not(:disabled){background:var(--ccs-action-danger-hover)}
+/* Barra azul: ações contrastantes, distintas das ações de conteúdo. */
+:is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#colab-overlay,#frota-overlay)
+  .ccs-module-topbar :is(#gps-refresh,#ef-refresh,#vt-refresh,#frota-refresh,#gps-close,#ef-close,#vt-close,#frota-close,#colab-close){
+  background:#ffffff14;color:#fff;border-color:#ffffff38;
+}
+:is(#gps-overlay,#efetivo-overlay,#veiculos-overlay,#colab-overlay,#frota-overlay)
+  .ccs-module-topbar :is(#gps-refresh,#ef-refresh,#vt-refresh,#frota-refresh,#gps-close,#ef-close,#vt-close,#frota-close,#colab-close):hover:not(:disabled){
+  background:#ffffff2b;border-color:#ffffff60;
+}
