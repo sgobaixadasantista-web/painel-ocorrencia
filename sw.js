@@ -2,7 +2,7 @@
    Só guarda arquivos DESTE site (tela, estilos, fontes). Nada do Supabase passa por aqui:
    os dados dos registros ficam no banco e na fila do aparelho (IndexedDB), não neste cache.
    Para forçar atualização do aplicativo em todos os aparelhos, troque o número em VERSAO. */
-var VERSAO = 'v4';
+var VERSAO = 'v5';
 var CACHE = 'security-rumo-' + VERSAO;
 var ARQUIVOS = [
   "./",
