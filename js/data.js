@@ -107,6 +107,18 @@
         return api.perfil(r.data.user);
       },
       async sair() { var c = await lib(); await c.auth.signOut(); },
+      // Catálogos ativos para Trecho > Sigla; leitura protegida por RLS.
+      async listarTrechosSiglas() {
+        var c = await lib();
+        var [t, g] = await Promise.all([
+          c.from('aux_trechos').select('codigo,ordem').eq('ativo', true).order('ordem'),
+          c.from('aux_siglas').select('trecho_codigo,sigla,ordem').eq('ativo', true).order('ordem')
+        ]);
+        var trechos = ok(t), siglas = ok(g), mapa = {};
+        trechos.forEach(function (r) { mapa[r.codigo] = []; });
+        siglas.forEach(function (r) { if (mapa[r.trecho_codigo]) mapa[r.trecho_codigo].push(r.sigla); });
+        return mapa;
+      },
       // Tipificação (natureza > tipo > subtipo) e os formulários que cada combinação abre. Vem do banco: tabelas tipificacao e formularios.
       async tipificacao() {
         var c = await lib();
@@ -404,6 +416,7 @@
       iniciar: function () { return lat({ logado: true, usuario: usuario }); },
       entrar: function () { return lat({ logado: true, usuario: usuario }); },
       sair: function () { return lat(); },
+      listarTrechosSiglas: function () { return lat(null); },
       tipificacao: function () { return lat({ linhas: TIPIF.linhas.map(function (l) { return { id: l[0], natureza: l[1], tipo: l[2], subtipo: l[3], formulario: l[4] }; }), formularios: JSON.parse(JSON.stringify(TIPIF.formularios)) }); },
       listarEventos: function (f) { var base = f.somenteMeus ? eventos.filter(function (e) { return e.criadoPorNome === usuario.nome; }) : eventos; return lat(pagina(filtrar(base, f, ['local', 'descricao', 'numero', 'criadoPorNome'], 'concluido'), f, ev)); },
       listarOcorrencias: function (f) { return lat(pagina(filtrar(ocorrencias, f, ['local', 'descricao', 'numero', 'tipo', 'subtipo', 'eventoNumero'], 'concluido'), f, oc)); },
