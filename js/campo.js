@@ -33,10 +33,10 @@
   function montar(raiz) {
     parar();
     C = { raiz: raiz, uid: null, linhas: [], total: 0, pagina: 1, carregando: true, erroLista: '', cacheEm: null, fila: [], sync: null, novoPedido: false, numeros: {},
-      sheet: null, passo: 0, rasc: novoRasc(), fotos: [], gpsBusy: false, lendoFoto: 0, det: null, resultado: null, erroPasso: {}, timers: [], unsub: null, rascRecuperado: false };
+      catalogo: null, catalogoAviso: '', sheet: null, passo: 0, rasc: novoRasc(), fotos: [], gpsBusy: false, lendoFoto: 0, det: null, resultado: null, erroPasso: {}, timers: [], unsub: null, rascRecuperado: false };
     raiz.innerHTML = '<div id="ca-main"></div><div id="ca-sheet"></div>';
     raiz.addEventListener('click', aoClicar); raiz.addEventListener('input', aoDigitar); raiz.addEventListener('change', aoMudar);
-    render();
+    render(); carregarCatalogo();
     if (!ouvintes) {
       ouvintes = true;
       window.addEventListener('online', function () { if (C) { render(); sincronizar(); carregarLista({ silencioso: true }); } });
@@ -170,7 +170,7 @@
   function abrirNovo() {
     var r = lsGet(chaveRasc(), null); C.rasc = novoRasc(); C.rascRecuperado = false;
     if (r && (r.local || r.descricao)) { C.rasc.local = r.local || ''; C.rasc.trecho = r.trecho || ''; C.rasc.sigla = r.sigla || ''; C.rasc.descricao = r.descricao || ''; C.rasc.lat = r.lat == null ? null : r.lat; C.rasc.lon = r.lon == null ? null : r.lon; C.rasc.acc = r.acc; C.rascRecuperado = true; }
-    soltarFotos(); C.fotos = []; C.passo = 0; C.erroPasso = {}; C.sheet = 'novo'; C.resultado = null; renderSheet();
+    soltarFotos(); C.fotos = []; C.passo = 0; C.erroPasso = {}; C.sheet = 'novo'; C.resultado = null; renderSheet(); if (!C.catalogo) carregarCatalogo();
   }
   function salvarRasc() { var r = C.rasc; if (!r.local && !r.descricao) { lsDel(chaveRasc()); return; } lsSet(chaveRasc(), { local: r.local, trecho: r.trecho, sigla: r.sigla, descricao: r.descricao, lat: r.lat, lon: r.lon, acc: r.acc }); }
   function soltarFotos() { if (C && C.fotos) C.fotos.forEach(function (f) { try { URL.revokeObjectURL(f.url); } catch (e) {} }); }
@@ -184,10 +184,11 @@
   // Siglas por trecho, conforme planilha SIGLAS(2).xlsx (aba siglas).
   var SIGLAS_POR_TRECHO = {"TRECHO 0":"ZPG,ZZV,ZGM,ZPT,ZGP,ZWU,ZDC,ZXW,ZSM,ZEZ,ZDR","TRECHO 1":"ZEV,ZRB,ZEJ,ZMS,ZEM,ZYQ,ZWI,ZLU,ZKW,ZWW,ZKE,ZGA,ZPS,ZCX,ZER,ZDI,ZDY,ZXP,ZFY,ZYU,ZST,ZXI,ZIC,ZVK,ZDS,ZQB,ZJY,ZVN,ZCP,ZAB,ZHN,ZMY,ZGZ,ZMK,ZXY,ZAL,ZYF,ZBT,ZSS,ZGO,ZVB,ZIE,ZBX,ZWO,ZCQ,ZJM,ZLJ,ZMI,ZXR,ZCN,ZJZ,ZUT,ZEX,ZCO,ZAW,ZBC,ZRJ,ZVY","TRECHO 2":"ZNG,ZBV,ZHO,ZSU,ZAC,ZSW,ZTT,ZLI,ZCD,ZSQ,ZWX,ZRX,ZRO,ZRQ,ZQX,ZOX,ZIQ,ZVI,ZFR,ZSK,ZXH,ZTI,ZOI,ZBL,ZOP,ZZQ,ZZZ,ZPB,ZSB,ZRC,ZBI,ZBM,ZNO","TRECHO 3":"ZAR,ZTO,ZDZ,ZMA,ZDG,ZTN,ZLQ,ZTQ,ZCZ,ZZF,ZSD,ZJP,ZJC,ZXB,ZPN,ZAX,ZSL,ZRI,ZGT,ZXE,ZBH,ZPL,ZBD,ZCJ,ZBR,ZCA","TRECHO 3.1":"ZCV,ZCT,ZUC,ZCG,ZEH,ZSP,ZRU,ZGB,ZMO,ZVU,ZEB,ZRZ,ZEC,ZKY,ZZM,ZVP,ZCF,ZGI,ZMR,ZFN,ZFP,ZRL,ZED,ZJA,ZUR,ZUE,ZTF,ZSF,ZRW,TPO","TRECHO MRS":"ICB,ISN,IBA,IUF,IPG,S33,IAA,S29","TRECHO FIPS":"PSN,PMC,PST,PCX,PCZ"};
   function passoLocal() {
-    var r = C.rasc, rec = lsGet(chaveLocais(), []);
+    var r = C.rasc, rec = lsGet(chaveLocais(), []), catalogo = C.catalogo || SIGLAS_POR_TRECHO;
     return (C.rascRecuperado ? '<p class="aviso">Rascunho recuperado. <button type="button" class="r-btn r-btn-ghost r-btn-sm" style="min-height:24px;padding:0" data-ca="rasc-limpar">Começar do zero</button></p>' : '') +
-      '<div class="r-field"><label class="r-label" for="ca-trecho">Trecho<span class="r-req">*</span></label><select class="r-input" id="ca-trecho"><option value="">Selecione o trecho</option>' + Object.keys(SIGLAS_POR_TRECHO).map(function (t) { return '<option value="' + esc(t) + '"' + (r.trecho === t ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select></div>' +
-      '<div class="r-field"><label class="r-label" for="ca-sigla">Sigla<span class="r-req">*</span></label><select class="r-input" id="ca-sigla"' + (!r.trecho ? ' disabled' : '') + '><option value="">Selecione a sigla</option>' + ((SIGLAS_POR_TRECHO[r.trecho] || '').split(',').filter(Boolean)).map(function (s) { return '<option value="' + esc(s) + '"' + (r.sigla === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="r-field"><label class="r-label" for="ca-trecho">Trecho<span class="r-req">*</span></label><select class="r-input" id="ca-trecho"><option value="">Selecione o trecho</option>' + Object.keys(catalogo).map(function (t) { return '<option value="' + esc(t) + '"' + (r.trecho === t ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="r-field"><label class="r-label" for="ca-sigla">Sigla<span class="r-req">*</span></label><select class="r-input" id="ca-sigla"' + (!r.trecho ? ' disabled' : '') + '><option value="">Selecione a sigla</option>' + (Array.isArray(catalogo[r.trecho]) ? catalogo[r.trecho] : (catalogo[r.trecho] || '').split(',').filter(Boolean)).map(function (s) { return '<option value="' + esc(s) + '"' + (r.sigla === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select></div>' +
+      (C.catalogoAviso ? '<p class="r-hint" role="status">' + esc(C.catalogoAviso) + '</p>' : '') +
       '<div class="r-field"><label class="r-label" for="ca-local">Local<span class="r-req" aria-hidden="true">*</span></label><input class="r-input" id="ca-local" maxlength="120" autocomplete="off" enterkeyhint="next" value="' + esc(r.local) + '"' + (C.erroPasso.local ? ' aria-invalid="true"' : '') + '>' +
       '<span class="r-hint">Trecho, quilômetro ou estação. Exemplo: Trecho 0, km 89+900</span>' + err('local') + '</div>' +
       (rec.length ? '<div><span class="r-label">Locais recentes</span><div class="opcoes" style="margin-top:6px">' + rec.map(function (l) { return '<button type="button" class="r-chip" data-ca="local-rec" data-v="' + esc(l) + '">' + esc(l) + '</button>'; }).join('') + '</div></div>' : '') +
