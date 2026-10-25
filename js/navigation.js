@@ -7,8 +7,8 @@ const closeIds={'gps-overlay':'gps-close','efetivo-overlay':'ef-close','veiculos
 const icons={'nav-intel':'documento','nav-events':'documento','nav-occurrences':'checklist','mapa-gps':'localizar','efetivo-turno':'equipe','veiculo-turno':'vagao',frota:'seguranca',colaboradores:'usuario','gestao-postos':'equipe'};
 function icon(name){const paths=window.RUMO_ICONS?.[name];if(!paths)return '';return '<svg class="ccs-nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths.map(p=>'<path d="'+p+'"/>').join('')+'</svg>'}
 
-let expanded=true,mobileOpen=false,modeSeen='',current='nav-events',queued=false;
-try{expanded=localStorage.getItem('ccs-nav-collapsed')!=='1'}catch(_){}
+let expanded=false,mobileOpen=false,modeSeen='',current='nav-events',queued=false;
+// Menu lateral inicia recolhido; abertura somente por interação explícita.
 function mode(){
  const el=app();if(!el || !el.querySelector('.r-topbar') || !el.querySelector('main.page') || el.querySelector('#campo-root'))return null;
  return /Inteligência/i.test(el.querySelector('.r-page-h1')?.textContent||'')?'inteligencia':'central';
@@ -43,10 +43,11 @@ function syncActive(){
  });
 }
 function closeMobile(){mobileOpen=false;document.body.classList.remove('ccs-sidebar-mobile-open')}
-function setExpanded(next){expanded=next;document.body.classList.toggle('ccs-sidebar-collapsed',!expanded);try{localStorage.setItem('ccs-nav-collapsed',expanded?'0':'1')}catch(_){}}
+function setExpanded(next){expanded=next;document.body.classList.toggle('ccs-sidebar-collapsed',!expanded)}
 function navigate(id){
  closeMobile();if(!mode())return;
- if(id==='gestao-postos'){window.location.assign('gestao-postos.html');return;}\n if(id==='nav-intel'){closeOverlay();current=id;syncActive();return;}
+ if(id==='gestao-postos'){window.location.assign('gestao-postos.html');return;}
+ if(id==='nav-intel'){closeOverlay();current=id;syncActive();return;}
  if(id==='nav-events'||id==='nav-occurrences'){
   closeOverlay();
   const tab=app()?.querySelector('[data-act="aba"][data-v="'+(id==='nav-events'?'eventos':'ocorrencias')+'"]');
