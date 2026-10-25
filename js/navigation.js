@@ -4,7 +4,7 @@
 const app=()=>document.getElementById('app');
 const overlays={'mapa-gps':'gps-overlay','efetivo-turno':'efetivo-overlay','veiculo-turno':'veiculos-overlay','frota':'frota-overlay','colaboradores':'colab-overlay'};
 const closeIds={'gps-overlay':'gps-close','efetivo-overlay':'ef-close','veiculos-overlay':'vt-close','frota-overlay':'frota-close','colab-overlay':'colab-close'};
-const icons={'nav-intel':'documento','nav-events':'documento','nav-occurrences':'checklist','mapa-gps':'localizar','efetivo-turno':'equipe','veiculo-turno':'vagao',frota:'seguranca',colaboradores:'usuario','gestao-postos':'equipe'};
+const icons={'nav-intel':'documento','nav-events':'documento','nav-occurrences':'checklist','mapa-gps':'localizar','efetivo-turno':'equipe','veiculo-turno':'vagao',frota:'seguranca',colaboradores:'usuario','gestao-postos':'equipe','confirmacoes-postos':'checklist'};
 function icon(name){const paths=window.RUMO_ICONS?.[name];if(!paths)return '';return '<svg class="ccs-nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths.map(p=>'<path d="'+p+'"/>').join('')+'</svg>'}
 
 let expanded=false,mobileOpen=false,modeSeen='',current='nav-events',queued=false;
@@ -19,7 +19,7 @@ function items(){
  return [
  {title:'OPERAÇÕES',links:[{id:'nav-events',name:'Eventos'},{id:'nav-occurrences',name:'Ocorrências'},{id:'mapa-gps',name:'Monitoramento GPS'}]},
  {title:'GESTÃO',links:[{id:'efetivo-turno',name:'Efetivo no Turno'},{id:'veiculo-turno',name:'Veículo no Turno'},{id:'frota',name:'Frota e Checklists'}]},
- {title:'CADASTROS',links:[{id:'colaboradores',name:'Colaboradores'},{id:'gestao-postos',name:'Postos e Escalas'}]}
+ {title:'CADASTROS',links:[{id:'colaboradores',name:'Colaboradores'},{id:'gestao-postos',name:'Postos e Escalas'},{id:'confirmacoes-postos',name:'Confirmações de Postos'}]}
  ];
 }
 function closeOverlay(){
@@ -46,7 +46,7 @@ function closeMobile(){mobileOpen=false;document.body.classList.remove('ccs-side
 function setExpanded(next){expanded=next;document.body.classList.toggle('ccs-sidebar-collapsed',!expanded)}
 function navigate(id){
  closeMobile();if(!mode())return;
- if(id==='gestao-postos'){window.location.assign('gestao-postos.html');return;}
+ if(id==='gestao-postos'){window.location.assign('gestao-postos.html');return;}\n if(id==='confirmacoes-postos'){window.location.assign('confirmacoes-postos.html');return;}
  if(id==='nav-intel'){closeOverlay();current=id;syncActive();return;}
  if(id==='nav-events'||id==='nav-occurrences'){
   closeOverlay();
