@@ -4,7 +4,7 @@
 const app=()=>document.getElementById('app');
 const overlays={'mapa-gps':'gps-overlay','efetivo-turno':'efetivo-overlay','veiculo-turno':'veiculos-overlay','frota':'frota-overlay','colaboradores':'colab-overlay'};
 const closeIds={'gps-overlay':'gps-close','efetivo-overlay':'ef-close','veiculos-overlay':'vt-close','frota-overlay':'frota-close','colab-overlay':'colab-close'};
-const icons={'nav-intel':'documento','nav-events':'documento','nav-occurrences':'checklist','mapa-gps':'localizar','efetivo-turno':'equipe','veiculo-turno':'vagao',frota:'seguranca',colaboradores:'usuario'};
+const icons={'nav-intel':'documento','nav-events':'documento','nav-occurrences':'checklist','mapa-gps':'localizar','efetivo-turno':'equipe','veiculo-turno':'vagao',frota:'seguranca',colaboradores:'usuario','gestao-postos':'equipe'};
 function icon(name){const paths=window.RUMO_ICONS?.[name];if(!paths)return '';return '<svg class="ccs-nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths.map(p=>'<path d="'+p+'"/>').join('')+'</svg>'}
 
 let expanded=true,mobileOpen=false,modeSeen='',current='nav-events',queued=false;
@@ -19,7 +19,7 @@ function items(){
  return [
  {title:'OPERAÇÕES',links:[{id:'nav-events',name:'Eventos'},{id:'nav-occurrences',name:'Ocorrências'},{id:'mapa-gps',name:'Monitoramento GPS'}]},
  {title:'GESTÃO',links:[{id:'efetivo-turno',name:'Efetivo no Turno'},{id:'veiculo-turno',name:'Veículo no Turno'},{id:'frota',name:'Frota e Checklists'}]},
- {title:'CADASTROS',links:[{id:'colaboradores',name:'Colaboradores'}]}
+ {title:'CADASTROS',links:[{id:'colaboradores',name:'Colaboradores'},{id:'gestao-postos',name:'Postos e Escalas'}]}
  ];
 }
 function closeOverlay(){
@@ -46,7 +46,7 @@ function setExpanded(next){expanded=next;document.body.classList.toggle('ccs-sid
 function navigate(id){
  closeMobile();if(!mode())return;
  closeOverlay();
- if(id==='nav-intel'){current=id;syncActive();return;}
+ if(id==='gestao-postos'){window.location.assign('gestao-postos.html');return;}\n if(id==='nav-intel'){current=id;syncActive();return;}
  if(id==='nav-events'||id==='nav-occurrences'){
   const tab=app()?.querySelector('[data-act="aba"][data-v="'+(id==='nav-events'?'eventos':'ocorrencias')+'"]');
   if(tab)tab.click();else app()?.querySelector('[data-act="atualizar"]')?.click();
