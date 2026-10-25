@@ -10,7 +10,7 @@ function icon(name){const paths=window.RUMO_ICONS?.[name];if(!paths)return '';re
 let expanded=true,mobileOpen=false,modeSeen='',current='nav-events',queued=false;
 try{expanded=localStorage.getItem('ccs-nav-collapsed')!=='1'}catch(_){}
 function mode(){
- const el=app();if(!el?.querySelector('.r-topbar')||!el.querySelector('main.page')||el.querySelector('#campo-root'))return null;
+ const el=app();if(!el || !el.querySelector('.r-topbar') || !el.querySelector('main.page') || el.querySelector('#campo-root'))return null;
  return /Inteligência/i.test(el.querySelector('.r-page-h1')?.textContent||'')?'inteligencia':'central';
 }
 function items(){
@@ -31,7 +31,8 @@ function closeOverlay(){
 }
 function syncActive(){
  const nav=document.getElementById('ccs-nav');if(!nav)return;
- if(!Object.values(overlays).some(id=>document.getElementById(id))){
+ const activeOverlay=Object.entries(overlays).find(([key,id])=>document.getElementById(id));
+ if(activeOverlay){current=activeOverlay[0];}else{
   const occurrence=app()?.querySelector('[data-act="aba"][data-v="ocorrencias"][aria-selected="true"]');
   current=mode()==='inteligencia'?'nav-intel':occurrence?'nav-occurrences':'nav-events';
  }
@@ -45,12 +46,14 @@ function closeMobile(){mobileOpen=false;document.body.classList.remove('ccs-side
 function setExpanded(next){expanded=next;document.body.classList.toggle('ccs-sidebar-collapsed',!expanded);try{localStorage.setItem('ccs-nav-collapsed',expanded?'0':'1')}catch(_){}}
 function navigate(id){
  closeMobile();if(!mode())return;
- closeOverlay();
- if(id==='gestao-postos'){window.location.assign('gestao-postos.html');return;}\n if(id==='nav-intel'){current=id;syncActive();return;}
+ if(id==='gestao-postos'){window.location.assign('gestao-postos.html');return;}\n if(id==='nav-intel'){closeOverlay();current=id;syncActive();return;}
  if(id==='nav-events'||id==='nav-occurrences'){
+  closeOverlay();
   const tab=app()?.querySelector('[data-act="aba"][data-v="'+(id==='nav-events'?'eventos':'ocorrencias')+'"]');
   if(tab)tab.click();else app()?.querySelector('[data-act="atualizar"]')?.click();
  }else{
+  if(document.getElementById(overlays[id])){current=id;syncActive();return;}
+  closeOverlay();
   const button=document.createElement('button');button.type='button';button.hidden=true;button.dataset.act=id;app().appendChild(button);button.click();button.remove();
  }
  current=id;syncActive();
@@ -83,6 +86,7 @@ document.addEventListener('click',event=>{
  if(tab){current=tab.dataset.v==='ocorrencias'?'nav-occurrences':'nav-events';queueMicrotask(syncActive)}
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobile()});
+window.addEventListener('resize',()=>{if(window.innerWidth>=1024)closeMobile()});
 const observer=new MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;build()})});
 function start(){
  if(!app())return;
