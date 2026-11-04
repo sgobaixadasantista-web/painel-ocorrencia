@@ -43,7 +43,7 @@ function syncActive(){
  });
 }
 function closeMobile(){mobileOpen=false;document.body.classList.remove('ccs-sidebar-mobile-open')}
-function setExpanded(next){expanded=next;document.body.classList.toggle('ccs-sidebar-collapsed',!expanded)}
+function setExpanded(next){expanded=Boolean(next);document.body.classList.toggle('ccs-sidebar-collapsed',!expanded);const toggle=document.getElementById('ccs-collapse');if(toggle){toggle.setAttribute('aria-expanded',String(expanded));toggle.setAttribute('aria-label',expanded?'Recolher menu':'Expandir menu');}}
 function navigate(id){
  closeMobile();if(!mode())return;
  if(id==='gestao-postos'){window.location.assign('gestao-postos.html');return;}
@@ -51,11 +51,12 @@ function navigate(id){
  if(id==='nav-events'||id==='nav-occurrences'){
   closeOverlay();
   const tab=app()?.querySelector('[data-act="aba"][data-v="'+(id==='nav-events'?'eventos':'ocorrencias')+'"]');
-  if(tab)tab.click();else app()?.querySelector('[data-act="atualizar"]')?.click();
+  if(tab)tab.click();else {console.warn('Aba não encontrada:',id);return;}
  }else{
   if(document.getElementById(overlays[id])){current=id;syncActive();return;}
   closeOverlay();
-  const button=document.createElement('button');button.type='button';button.hidden=true;button.dataset.act=id;app().appendChild(button);button.click();button.remove();
+  const button=app()?.querySelector('[data-act="'+id+'"]');
+  if(button)button.click();else {console.warn('Ação do módulo não encontrada:',id);return;}
  }
  current=id;syncActive();
 }
