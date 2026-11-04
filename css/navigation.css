@@ -176,3 +176,18 @@ body.ccs-shell #efetivo-overlay .r-table-wrap{box-shadow:var(--rumo-shadow-card,
 @media(max-width:1023px){
  body.ccs-shell #app > main.page{width:100%;max-width:none;box-sizing:border-box}
 }
+
+/* Correção: o placeholder #topbar é substituído por <header class="r-topbar">.
+   O seletor anterior (#app > #topbar) não encontrava o elemento renderizado. */
+@media(min-width:1024px){
+ body.ccs-shell #app > header.r-topbar.ccs-topbar{
+  position:relative;
+  z-index:160;
+  margin-left:calc(-1 * var(--ccs-sidebar-width));
+  width:calc(100% + var(--ccs-sidebar-width));
+  min-height:var(--ccs-topbar-height);
+  box-sizing:border-box;
+ }
+ body.ccs-shell #app > header.r-topbar.ccs-topbar .ccs-topbar-left{min-width:0}
+ body.ccs-shell #ccs-nav{top:var(--ccs-topbar-height)}
+}
