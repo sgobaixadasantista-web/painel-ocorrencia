@@ -161,3 +161,18 @@ body.ccs-shell #efetivo-overlay .r-table-wrap{box-shadow:var(--rumo-shadow-card,
 /* Sidebar textual: sem ícones, nomes com espaço integral. */
 #ccs-nav .ccs-nav-link{gap:0;padding-left:15px;padding-right:12px}
 @media(min-width:1024px){body.ccs-shell #ccs-nav .ccs-nav-link{padding-left:15px;padding-right:12px}}
+
+/* Central: aproveitar integralmente a área útil abaixo da topbar e ao lado da sidebar. */
+@media(min-width:1024px){
+ body.ccs-shell{--ccs-topbar-height:60px}
+ body.ccs-shell #ccs-nav{top:var(--ccs-topbar-height);height:calc(100dvh - var(--ccs-topbar-height));bottom:auto;box-shadow:none}
+ body.ccs-shell #ccs-nav .ccs-nav-brand{display:none}
+ body.ccs-shell #app{width:calc(100% - var(--ccs-sidebar-width));max-width:none;box-sizing:border-box}
+ body.ccs-shell #app > #topbar{position:relative;z-index:160;margin-left:calc(-1 * var(--ccs-sidebar-width));width:calc(100% + var(--ccs-sidebar-width))}
+ body.ccs-shell #app > #topbar .r-topbar{width:100%;box-sizing:border-box}
+ body.ccs-shell #app > main.page{width:100%;max-width:none;margin:0;box-sizing:border-box;padding:16px clamp(16px,1.5vw,28px) 28px}
+ body.ccs-shell #app > main.page .r-table-wrap{max-width:100%}
+}
+@media(max-width:1023px){
+ body.ccs-shell #app > main.page{width:100%;max-width:none;box-sizing:border-box}
+}
