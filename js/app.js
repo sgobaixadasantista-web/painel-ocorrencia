@@ -370,6 +370,7 @@
       NATUREZAS.map(function (n) { return '<label class="r-check"><input type="radio" name="nat" value="' + n[0] + '">' + n[1] + '</label>'; }).join('') + '</div><div class="r-err" id="er-nat" hidden></div></fieldset>' +
       '<div class="r-field"><label class="r-label" for="tri-tipo">Tipo' + req + '</label><select class="r-input" id="tri-tipo" disabled><option value="">Escolha a natureza primeiro</option></select><div class="r-err" id="er-tipo" hidden></div></div>' +
       '<div class="r-field"><label class="r-label" for="tri-sub">Subtipo' + req + '</label><select class="r-input" id="tri-sub" disabled><option value="">Escolha o tipo primeiro</option></select><div class="r-err" id="er-sub" hidden></div></div>' +
+      '<div id="tri-combinacao" class="r-hint" role="status" aria-live="polite">Selecione natureza, tipo e subtipo para identificar a combinação.</div>' +
       '<div id="tri-dyn" class="bloco"></div>' +
       '<div id="tri-crim" class="bloco" hidden><p class="aviso">Natureza criminal vira uma ocorrência para a inteligência e o evento é concluído automaticamente.</p>' +
       '<div class="r-field"><label class="r-label" for="tri-forma">Forma de conhecimento</label><select class="r-input" id="tri-forma"><option value="">Não informada</option>' + FORMAS.map(function (f) { return '<option value="' + f[0] + '">' + f[1] + '</option>'; }).join('') + '</select></div>' +
@@ -384,6 +385,8 @@
   function unicos(arr) { var v = {}, o = []; arr.forEach(function (x) { if (!v[x]) { v[x] = 1; o.push(x); } }); return o; }
   function syncTriagem() {
     var f = $('f-tri'); if (!f) return; var nat = triNatureza(), crim = nat === 'criminal', btn = $('btn-triar');
+    var resumo = $('tri-combinacao'), linha = triLinha();
+    if (resumo) resumo.textContent = linha ? 'Combinação válida · ID ' + linha.id + ' · ' + tipifTxt(linha.natureza, linha.tipo, linha.subtipo) : 'Selecione natureza, tipo e subtipo para identificar a combinação.';
     $('tri-crim').hidden = !nat || !crim; $('tri-fim').hidden = !nat || crim;
     btn.textContent = !nat ? 'Concluir triagem' : (crim ? 'Encaminhar à inteligência' : 'Finalizar evento');
   }
@@ -391,11 +394,13 @@
     var nat = triNatureza(), tipos = unicos(S.tipif.linhas.filter(function (l) { return l.natureza === nat; }).map(function (l) { return l.tipo; }));
     var t = $('tri-tipo'), st = $('tri-sub'); t.disabled = !tipos.length; t.innerHTML = opcoesSel(tipos, 'Selecione o tipo (' + tipos.length + ')');
     st.disabled = true; st.innerHTML = '<option value="">Escolha o tipo primeiro</option>'; $('tri-dyn').innerHTML = ''; syncTriagem();
+    if (!tipos.length && nat) { var resumo = $('tri-combinacao'); if (resumo) resumo.textContent = 'Não há tipos cadastrados para esta natureza. Verifique a tabela de tipificação.'; }
     ['er-nat', 'er-tipo', 'er-sub'].forEach(function (i) { erroCampo(i, ''); });
   }
   function aoEscolherTipo() {
     var nat = triNatureza(), tipo = $('tri-tipo').value, subs = unicos(S.tipif.linhas.filter(function (l) { return l.natureza === nat && l.tipo === tipo; }).map(function (l) { return l.subtipo; })), st = $('tri-sub');
     st.disabled = !subs.length; st.innerHTML = opcoesSel(subs, tipo ? 'Selecione o subtipo (' + subs.length + ')' : 'Escolha o tipo primeiro'); $('tri-dyn').innerHTML = '';
+    syncTriagem();
     if (subs.length === 1) { st.value = subs[0]; aoEscolherSubtipo(); }
   }
   /* ----- Formulário de referência da combinação (definido na tabela "formularios") ----- */
@@ -411,7 +416,7 @@
     return '<div class="r-field"><label class="r-label" for="' + id + '">' + esc(c.rotulo) + req + '</label>' + ctrl + (c.ajuda ? '<span class="r-hint">' + esc(c.ajuda) + '</span>' : '') + '<div class="r-err" id="er-' + id + '" hidden></div></div>';
   }
   function aoEscolherSubtipo() {
-    var l = triLinha(), box = $('tri-dyn'); if (!l) { box.innerHTML = ''; return; }
+    var l = triLinha(), box = $('tri-dyn'); syncTriagem(); if (!l) { box.innerHTML = ''; return; }
     var fm = S.tipif.formularios[l.formulario]; if (!fm) { box.innerHTML = '<p class="aviso">Esta combinação não tem formulário ativo.</p>'; return; }
     var grupos = {}, ordem = []; fm.campos.forEach(function (c) { var g = c.grupo || 'Principal'; if (!grupos[g]) { grupos[g] = []; ordem.push(g); } grupos[g].push(c); });
     var obrig = fm.campos.filter(function (c) { return c.obrigatorio; });
