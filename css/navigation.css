@@ -157,3 +157,7 @@ body.ccs-shell #efetivo-overlay .r-table-wrap{box-shadow:var(--rumo-shadow-card,
  body.ccs-shell #ccs-nav #ccs-collapse,body.ccs-shell .r-topbar [data-act="nav-toggle"]{display:none!important}
  body.ccs-shell #gps-overlay,body.ccs-shell #efetivo-overlay,body.ccs-shell #veiculos-overlay,body.ccs-shell #frota-overlay,body.ccs-shell #colab-overlay{left:var(--ccs-sidebar-width)!important}
 }
+
+/* Sidebar textual: sem ícones, nomes com espaço integral. */
+#ccs-nav .ccs-nav-link{gap:0;padding-left:15px;padding-right:12px}
+@media(min-width:1024px){body.ccs-shell #ccs-nav .ccs-nav-link{padding-left:15px;padding-right:12px}}
