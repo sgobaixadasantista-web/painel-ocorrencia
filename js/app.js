@@ -541,7 +541,7 @@
         var valor = r[k]; if (valor == null) return;
         var rotulos = { nota: 'Nota', justificativa: 'Justificativa', status: 'Parecer', artigo: 'Artigo', fundamento: 'Fundamentação', texto: 'Texto', descricao: 'Descrição', observacao: 'Observação' };
         var conteudo;
-        if (valor && typeof valor === 'object' && !Array.isArray(valor)) {
+        if (Array.isArray(valor)) { conteudo = valor.length ? '<ul class="ia-lista">' + valor.map(function (item) { return '<li>' + esc(typeof item === 'string' ? item : JSON.stringify(item)) + '</li>'; }).join('') + '</ul>' : '<p>Nenhuma informação ausente.</p>'; } else if (valor && typeof valor === 'object') {
           conteudo = Object.keys(valor).map(function (campo) {
             var dado = valor[campo];
             var nome = rotulos[campo] || campo.replace(/_/g, ' ').replace(/^./, function (letra) { return letra.toUpperCase(); });
