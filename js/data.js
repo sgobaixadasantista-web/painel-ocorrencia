@@ -112,8 +112,9 @@
         var c = await lib();
         var t = ok(await c.from('tipificacao').select('id,natureza,tipo,subtipo,formulario').eq('ativo', true).order('id'));
         var f = ok(await c.from('formularios').select('codigo,nome,descricao,campos').eq('ativo', true));
+        var siglas = ok(await c.from('aux_siglas').select('sigla,trecho_codigo,ordem').eq('ativo', true).order('trecho_codigo').order('ordem'));
         var fm = {}; f.forEach(function (x) { fm[x.codigo] = x; });
-        return { linhas: t.filter(function (x) { return fm[x.formulario]; }), formularios: fm };
+        return { linhas: t.filter(function (x) { return fm[x.formulario]; }), formularios: fm, siglas: siglas };
       },
       async listarEventos(f) { return listar('v_fila_eventos', f, evento, ['local', 'descricao', 'numero_formatado', 'criado_por_nome']); },
       async listarOcorrencias(f) { return listar('v_fila_ocorrencias', f, ocorrencia, ['local', 'descricao', 'numero_formatado', 'tipo', 'subtipo', 'evento_numero_formatado']); },
