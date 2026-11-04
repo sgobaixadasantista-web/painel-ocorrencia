@@ -59,7 +59,7 @@
     return { t: 'Ag. classificação', c: 'warning' };
   }
   function tempoTxt(x) { return (x.status === 'concluido' ? 'em ' : '') + fmtDur(decorrido(x)); }
-  function indexarTipif(t) { var p = {}; t.linhas.forEach(function (l) { p[l.id] = l; }); return { linhas: t.linhas, formularios: t.formularios, porId: p }; }
+  function indexarTipif(t) { var p = {}; t.linhas.forEach(function (l) { p[l.id] = l; }); return { linhas: t.linhas, formularios: t.formularios, porId: p, siglas: t.siglas || [] }; }
   function carregarTipif() { return D.tipificacao().then(function (t) { S.tipif = indexarTipif(t); }); }
   function tipifTxt(nat, tipo, sub) { return [lbl(NATUREZAS, nat).toUpperCase(), tipo, sub].filter(Boolean).join(' › '); }
   function camposDe(id) { var l = S.tipif.porId[id], f = l && S.tipif.formularios[l.formulario]; return f ? f.campos : []; }
@@ -406,7 +406,8 @@
   /* ----- Formulário de referência da combinação (definido na tabela "formularios") ----- */
   function campoRef(c) {
     var id = 'f-' + c.chave, req = c.obrigatorio ? '<span class="r-req" aria-hidden="true">*</span>' : '', at = ' id="' + id + '" data-k="' + esc(c.chave) + '" data-t="' + esc(c.tipo) + '"', ctrl;
-    if (c.tipo === 'textarea') ctrl = '<textarea class="r-input"' + at + ' maxlength="' + (c.max || 2000) + '"></textarea>';
+    if (c.chave === 'sb') ctrl = '<select class="r-input"' + at + '><option value="">Selecione a sigla (SB)</option>' + (S.tipif.siglas || []).map(function (s) { return '<option value="' + esc(s.sigla) + '">' + esc(s.sigla) + '</option>'; }).join('') + '</select>';
+    else if (c.tipo === 'textarea') ctrl = '<textarea class="r-input"' + at + ' maxlength="' + (c.max || 2000) + '"></textarea>';
     else if (c.tipo === 'select') ctrl = '<select class="r-input"' + at + '><option value="">Selecione</option>' + (c.opcoes || []).map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '</select>';
     else if (c.tipo === 'sim_nao') ctrl = '<select class="r-input"' + at + '><option value="">Selecione</option><option value="sim">Sim</option><option value="nao">Não</option></select>';
     else if (c.tipo === 'hora') ctrl = '<input class="r-input"' + at + ' type="time">';
@@ -726,6 +727,7 @@
     else if (t.name === 'nat') aoEscolherNatureza();
     else if (t.id === 'tri-tipo') aoEscolherTipo();
     else if (t.id === 'tri-sub') aoEscolherSubtipo();
+    else if (t.id === 'f-sb') { var trecho = $('f-trecho'), sigla = (S.tipif.siglas || []).find(function (s) { return s.sigla === t.value; }); if (trecho) { trecho.value = sigla ? sigla.trecho_codigo : ''; trecho.dispatchEvent(new Event('input', { bubbles: true })); } }
     else if (t.id === 'bo-existe') { var f = $('fd-bo-num'); if (f) f.hidden = t.value !== 'sim'; }
   });
   document.addEventListener('focusout', function (ev) {
