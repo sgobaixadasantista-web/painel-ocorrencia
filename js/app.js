@@ -539,8 +539,19 @@
       var titulos = { qualidade: 'Qualidade do registro', viabilidade: 'Viabilidade do boletim', tipificacao: 'Tipificação sugerida', minuta: 'Minuta sugerida', naoInformado: 'Informações não localizadas' };
       Object.keys(titulos).forEach(function (k) {
         var valor = r[k]; if (valor == null) return;
-        var txt = typeof valor === 'string' ? valor : JSON.stringify(valor, null, 2);
-        h += '<details class="ia-etapa" open><summary>' + titulos[k] + '</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;margin:8px 0">' + esc(txt) + '</pre></details>';
+        var rotulos = { nota: 'Nota', justificativa: 'Justificativa', status: 'Parecer', artigo: 'Artigo', fundamento: 'Fundamentação', texto: 'Texto', descricao: 'Descrição', observacao: 'Observação' };
+        var conteudo;
+        if (valor && typeof valor === 'object' && !Array.isArray(valor)) {
+          conteudo = Object.keys(valor).map(function (campo) {
+            var dado = valor[campo];
+            var nome = rotulos[campo] || campo.replace(/_/g, ' ').replace(/^./, function (letra) { return letra.toUpperCase(); });
+            var texto = dado == null ? 'Não informado' : (typeof dado === 'object' ? JSON.stringify(dado) : String(dado));
+            return '<div style="margin:0 0 10px"><strong style="display:block;color:var(--rumo-muted);font-size:.84em;margin-bottom:3px">' + esc(nome) + '</strong><div style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55">' + esc(texto) + '</div></div>';
+          }).join('');
+        } else {
+          conteudo = '<div style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65">' + esc(typeof valor === 'string' ? valor : JSON.stringify(valor, null, 2)) + '</div>';
+        }
+        h += '<details class="ia-etapa" open><summary>' + esc(titulos[k]) + '</summary><div style="padding:12px 2px 4px">' + conteudo + '</div></details>';
       });
       return h + '</div></div>';
     }
