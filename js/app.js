@@ -528,7 +528,7 @@
   }
   function iaHtml(d) {
     var o = d.ocorrencia, ult = d.ia && d.ia[0], r = ult && ult.resultado;
-    var h = '<div class="bloco"><h3 class="sec-t">Análise por IA · OpenAI</h3>';
+    var h = '<div class="bloco"><h3 class="sec-t">Análise por IA</h3>';
     if (o.status !== 'concluido') {
       h += '<div class="linha-status"><button type="button" class="r-btn r-btn-outline r-btn-sm" id="btn-ia" data-act="ia"' + (S.iaBusy ? ' disabled' : '') + '>' + ico('checklist') + (S.iaBusy ? 'Analisando…' : (r ? 'Analisar de novo' : 'Analisar com IA')) + '</button>' +
         '<span class="r-hint" id="ia-st">' + (S.iaBusy ? 'A OpenAI está analisando a ocorrência. Aguarde.' : '') + '</span></div><div class="r-err" id="er-ia" hidden></div>';
