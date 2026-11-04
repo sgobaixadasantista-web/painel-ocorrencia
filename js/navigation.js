@@ -7,7 +7,7 @@ const closeIds={'gps-overlay':'gps-close','efetivo-overlay':'ef-close','veiculos
 const icons={'nav-intel':'documento','nav-events':'documento','nav-occurrences':'checklist','mapa-gps':'localizar','efetivo-turno':'equipe','veiculo-turno':'vagao',frota:'seguranca',colaboradores:'usuario','gestao-postos':'equipe'};
 function icon(name){const paths=window.RUMO_ICONS?.[name];if(!paths)return '';return '<svg class="ccs-nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths.map(p=>'<path d="'+p+'"/>').join('')+'</svg>'}
 
-let expanded=false,mobileOpen=false,modeSeen='',current='nav-events',queued=false;
+let expanded=true,mobileOpen=false,modeSeen='',current='nav-events',queued=false;
 // Menu lateral inicia recolhido; abertura somente por interação explícita.
 function mode(){
  const el=app();if(!el || !el.querySelector('.r-topbar') || !el.querySelector('main.page') || el.querySelector('#campo-root'))return null;
@@ -43,7 +43,7 @@ function syncActive(){
  });
 }
 function closeMobile(){mobileOpen=false;document.body.classList.remove('ccs-sidebar-mobile-open')}
-function setExpanded(next){expanded=Boolean(next);document.body.classList.toggle('ccs-sidebar-collapsed',!expanded);const toggle=document.getElementById('ccs-collapse');if(toggle){toggle.setAttribute('aria-expanded',String(expanded));toggle.setAttribute('aria-label',expanded?'Recolher menu':'Expandir menu');}}
+function setExpanded(next){expanded=true;document.body.classList.remove('ccs-sidebar-collapsed');const toggle=document.getElementById('ccs-collapse');if(toggle){toggle.setAttribute('aria-expanded','true');toggle.setAttribute('aria-label','Menu lateral fixo');toggle.hidden=true;}}
 function navigate(id){
  closeMobile();if(!mode())return;
  if(id==='gestao-postos'){window.location.assign('gestao-postos.html');return;}
@@ -74,7 +74,7 @@ function build(){
  '<div class="ccs-nav-group"><div class="ccs-nav-caption">'+group.title+'</div>'+group.links.map(item=>
  '<button type="button" class="ccs-nav-link" data-ccs-action="'+item.id+'" title="'+item.name+'"><span class="ccs-nav-icon" aria-hidden="true">'+icon(icons[item.id])+'</span><span class="ccs-nav-text">'+item.name+'</span></button>').join('')+'</div>').join('');
  document.body.appendChild(sidebar);document.body.classList.add('ccs-shell');setExpanded(expanded);
- sidebar.querySelector('#ccs-collapse').onclick=()=>setExpanded(!expanded);
+ sidebar.querySelector('#ccs-collapse').onclick=()=>{};
  sidebar.querySelectorAll('[data-ccs-action]').forEach(button=>button.onclick=()=>navigate(button.dataset.ccsAction));
  syncActive();
 }
@@ -82,7 +82,7 @@ document.addEventListener('click',event=>{
  if(event.target.closest('[data-act="nav-toggle"]')){
   event.preventDefault();
   if(window.matchMedia('(max-width:1023px)').matches){mobileOpen=!mobileOpen;document.body.classList.toggle('ccs-sidebar-mobile-open',mobileOpen)}
-  else setExpanded(!expanded);
+  else setExpanded(true);
  }
  const tab=event.target.closest('[data-act="aba"]');
  if(tab){current=tab.dataset.v==='ocorrencias'?'nav-occurrences':'nav-events';queueMicrotask(syncActive)}
