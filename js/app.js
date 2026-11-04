@@ -31,7 +31,7 @@
   };
 
   var S = {
-    tela: 'carregando', usuario: null, visao: 'central', aba: 'eventos', iaBusy: false, pick: null, mantem: false, status: '', busca: '', periodo: 'todos', pagina: 1, porPagina: 10,
+    tela: 'carregando', usuario: null, visao: 'central', aba: 'eventos', iaBusy: false, pick: null, mantem: false, status: '', busca: '', periodo: 'todos', pagina: 1, porPagina: 20,
     dados: { linhas: [], total: 0 }, kpi: null, carregando: true, erro: '', atualizadoEm: null, sync: 'syncing', tempoReal: false,
     tipif: { linhas: [], formularios: {}, porId: {} }, sel: null, det: null, detErro: '', ocupado: false, userPop: false, tok: 0, foco: null, unsub: null, timers: []
   };

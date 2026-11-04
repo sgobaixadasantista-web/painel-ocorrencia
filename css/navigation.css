@@ -146,3 +146,14 @@ body.ccs-shell #frota-overlay .r-table-wrap,
 body.ccs-shell #veiculos-overlay .r-table-wrap,
 body.ccs-shell #efetivo-overlay .r-table-wrap{box-shadow:var(--rumo-shadow-card,0 2px 9px #0001)}
 @media(max-width:650px){body.ccs-shell #frota-overlay .f-panel,body.ccs-shell #colab-overlay .colab-panel{padding:12px}body.ccs-shell #frota-overlay .ccs-module-topbar,body.ccs-shell #colab-overlay .ccs-module-topbar{margin:-12px -12px 14px}}
+
+/* Central desktop: sidebar fixa, aberta e sempre legível. */
+@media(min-width:1024px){
+ body.ccs-shell #app,body.ccs-shell.ccs-sidebar-collapsed #app{margin-left:var(--ccs-sidebar-width)}
+ body.ccs-shell #ccs-nav,body.ccs-shell.ccs-sidebar-collapsed #ccs-nav{width:var(--ccs-sidebar-width);transform:none}
+ body.ccs-shell #ccs-nav .ccs-nav-text,body.ccs-shell #ccs-nav .ccs-nav-caption,body.ccs-shell #ccs-nav .ccs-nav-brand strong{display:block}
+ body.ccs-shell #ccs-nav .ccs-nav-link{justify-content:flex-start;padding:9px 12px}
+ body.ccs-shell #ccs-nav .ccs-nav-group{padding:0 9px}
+ body.ccs-shell #ccs-nav #ccs-collapse,body.ccs-shell .r-topbar [data-act="nav-toggle"]{display:none!important}
+ body.ccs-shell #gps-overlay,body.ccs-shell #efetivo-overlay,body.ccs-shell #veiculos-overlay,body.ccs-shell #frota-overlay,body.ccs-shell #colab-overlay{left:var(--ccs-sidebar-width)!important}
+}
