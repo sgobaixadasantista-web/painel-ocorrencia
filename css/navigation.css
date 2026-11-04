@@ -191,3 +191,16 @@ body.ccs-shell #efetivo-overlay .r-table-wrap{box-shadow:var(--rumo-shadow-card,
  body.ccs-shell #app > header.r-topbar.ccs-topbar .ccs-topbar-left{min-width:0}
  body.ccs-shell #ccs-nav{top:var(--ccs-topbar-height)}
 }
+
+/* Cabeçalho persistente durante o scroll da página. */
+body.ccs-shell #app > header.r-topbar.ccs-topbar{
+ position:sticky;
+ top:0;
+ z-index:300;
+}
+@media(min-width:1024px){
+ body.ccs-shell #app > header.r-topbar.ccs-topbar{
+  position:sticky;
+  top:0;
+ }
+}
