@@ -15,7 +15,7 @@
   async function getClient(){
     if(client)return client;
     if(!config.SUPABASE_URL||!config.SUPABASE_ANON_KEY)throw Error('Configure Supabase no painel para consultar posições reais.');
-    if(!window.supabase)await new Promise((ok,fail)=>{const tag=document.createElement('script');tag.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';tag.onload=ok;tag.onerror=fail;document.head.appendChild(tag);});
+    if(!window.supabase)await new Promise((ok,fail)=>{const tag=document.createElement('script');tag.src='js/vendor/supabase-2.45.4.js';tag.onload=ok;tag.onerror=fail;document.head.appendChild(tag);});
     client=window.supabase.createClient(config.SUPABASE_URL,config.SUPABASE_ANON_KEY);
     return client;
   }
@@ -40,12 +40,58 @@
       if(item)openMap(item).catch(error=>{document.getElementById('gps-status').textContent='Erro ao localizar: '+error.message});
     });
   }
+  /* ---------- Alertas ----------
+     Turno não iniciado: equipes_alertas (gerados pelo banco a cada 5 min, migração 006).
+     GPS: rastreamento_alertas (enviados pelo app de campo: GPS desligado, turno retomado etc.). */
+  const ALERTA_GPS={
+    GPS_DESLIGADO:['GPS desligado no aparelho','bad'],
+    PERMISSAO_GPS_RETIRADA:['Permissão de localização retirada','bad'],
+    GPS_RESTABELECIDO:['GPS restabelecido','ok'],
+    TURNO_INICIADO:['Turno iniciado','ok'],
+    TURNO_RETOMADO:['Turno retomado (app reaberto)','warn'],
+    TURNO_ENCERRADO:['Turno encerrado','info']
+  };
+  function horaMin(v){if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(d)}
+  function duracao(ms){const m=Math.max(0,Math.round(ms/60000));return m<60?m+' min':Math.floor(m/60)+' h'+(m%60?' '+(m%60)+' min':'')}
+  function drawAlerts(turnos,gps){
+    const abertos=turnos.ok?turnos.rows.filter(a=>a.status!=='regularizado'):[];
+    document.getElementById('gps-nao-iniciados').textContent=turnos.ok?abertos.length:'—';
+    const card=document.getElementById('gps-card-alerta');if(card)card.classList.toggle('gps-card-bad',abertos.length>0);
+    const tb=document.getElementById('gps-turnos');
+    if(!turnos.ok){tb.innerHTML='<tr><td colspan="6" class="gps-empty">Não foi possível consultar os alertas de turno: '+esc(turnos.erro)+'</td></tr>';}
+    else{
+      tb.innerHTML=turnos.rows.map(a=>{
+        const t=a.turno||{},aberto=a.status!=='regularizado',atraso=aberto&&t.prazo_confirmacao?duracao(Date.now()-new Date(t.prazo_confirmacao).getTime()):'—';
+        return '<tr class="'+(aberto?'':'gps-row-muted')+'"><td><strong>'+esc(t.posto?.codigo||'—')+'</strong></td><td>'+esc(t.escala?.nome||'—')+'</td><td>'+esc(horaMin(t.inicio_previsto))+'</td><td>'+esc(horaMin(t.prazo_confirmacao))+'</td><td>'+(aberto?'<strong>'+esc(atraso)+'</strong>':'—')+'</td><td>'+(aberto?'<span class="gps-pill gps-bad">Não iniciado</span>':'<span class="gps-pill gps-ok">Regularizado</span> <small>'+esc(a.justificativa||'')+'</small>')+'</td></tr>';
+      }).join('')||'<tr><td colspan="6" class="gps-empty">Nenhum turno atrasado nas últimas 24 horas.</td></tr>';
+    }
+    const lg=document.getElementById('gps-alertas');
+    if(!gps.ok){lg.innerHTML='<tr><td colspan="4" class="gps-empty">Não foi possível consultar os alertas do GPS: '+esc(gps.erro)+'</td></tr>';return;}
+    lg.innerHTML=gps.rows.map(a=>{const [rot,tom]=ALERTA_GPS[a.tipo]||[a.tipo,'info'];
+      return '<tr><td><strong>'+esc(a.dispositivo?.equipe||'—')+'</strong></td><td><span class="gps-pill gps-'+tom+'">'+esc(rot)+'</span></td><td class="gps-msg">'+esc(a.mensagem||'')+'</td><td>'+esc(formatTime(a.criado_em))+'</td></tr>';
+    }).join('')||'<tr><td colspan="4" class="gps-empty">Nenhum alerta do GPS nas últimas 24 horas.</td></tr>';
+  }
+  async function loadAlerts(sb){
+    const desde=new Date(Date.now()-24*3600*1000).toISOString();
+    const [t,g]=await Promise.all([
+      sb.from('equipes_alertas').select('id,tipo,status,justificativa,criado_em,turno:equipes_turnos(inicio_previsto,prazo_confirmacao,fim_previsto,posto:equipes_postos(codigo),escala:equipes_escalas(nome))')
+        .eq('tipo','turno_nao_iniciado').gte('criado_em',desde).order('criado_em',{ascending:false}).limit(100),
+      sb.from('rastreamento_alertas').select('id,tipo,mensagem,criado_em,dispositivo:rastreamento_dispositivos(equipe)')
+        .gte('criado_em',desde).order('criado_em',{ascending:false}).limit(60)
+    ]);
+    const turnos=t.error?{ok:false,erro:t.error.message}:{ok:true,rows:(t.data||[]).sort((a,b)=>(a.status==='regularizado')-(b.status==='regularizado'))};
+    const gps=g.error?{ok:false,erro:g.error.message}:{ok:true,rows:g.data||[]};
+    drawAlerts(turnos,gps);
+  }
   async function refresh(){
     const status=document.getElementById('gps-status');if(!status)return;
     status.textContent='Atualizando posições...';
     try{
       const sb=await getClient(),auth=await sb.auth.getUser();if(!auth.data?.user)throw Error('Entre no painel para visualizar o rastreamento.');
-      const result=await sb.from('rastreamento_painel').select('dispositivo_id,equipe,turno_ativo,latitude,longitude,coletado_em,recebido_em,bateria_percentual,carregando,precisao_m,modo,status_conexao').order('equipe');
+      const [result]=await Promise.all([
+        sb.from('rastreamento_painel').select('dispositivo_id,equipe,turno_ativo,latitude,longitude,coletado_em,recebido_em,bateria_percentual,carregando,precisao_m,modo,status_conexao').order('equipe'),
+        loadAlerts(sb).catch(error=>drawAlerts({ok:false,erro:error.message||String(error)},{ok:false,erro:error.message||String(error)}))
+      ]);
       if(result.error)throw result.error;
       positions=result.data||[];draw();
       status.textContent='Atualizado em '+new Date().toLocaleTimeString('pt-BR')+' · atualização automática a cada 20 segundos';
@@ -77,7 +123,7 @@
   async function show(){
     if(document.getElementById('gps-overlay'))return;
     const overlay=document.createElement('div');overlay.id='gps-overlay';
-    overlay.innerHTML='<header class="gps-header ccs-module-topbar"><div class="ccs-module-brand"><strong>SECURITY CCS</strong><small>Monitoramento GPS</small></div><div class="ccs-module-actions"><button type="button" id="gps-refresh">Atualizar</button> <button type="button" id="gps-close">Voltar ao painel</button></div></header><main class="gps-main"><div class="gps-intro"><h2>Posicionamento das equipes</h2><p id="gps-status" role="status">Carregando posições...</p></div><div class="gps-cards"><article><span>Equipes monitoradas</span><strong id="gps-total">0</strong></article><article><span>Online</span><strong id="gps-online">0</strong></article><article><span>Offline</span><strong id="gps-offline">0</strong></article><article><span>Visíveis no filtro</span><strong id="gps-visible">0</strong></article></div><div class="gps-layout"><section class="gps-table-card"><h3>Equipes em campo</h3><div class="gps-filters"><input id="gps-search" type="search" placeholder="Pesquisar equipe ou dispositivo" aria-label="Pesquisar equipe"><select id="gps-filter" aria-label="Filtrar conexão"><option value="TODOS">Todas as conexões</option><option value="ONLINE">Online</option><option value="OFFLINE">Offline</option></select></div><div class="r-table-wrap gps-scroll"><table class="r-table"><thead><tr><th>Equipe</th><th>Conexão</th><th>Bateria</th><th>Última coleta</th><th>Modo</th><th>Ação</th></tr></thead><tbody id="gps-teams"></tbody></table></div></section></div></main>';
+    overlay.innerHTML='<header class="gps-header ccs-module-topbar"><div class="ccs-module-brand"><strong>SECURITY CCS</strong><small>Monitoramento GPS</small></div><div class="ccs-module-actions"><button type="button" id="gps-refresh">Atualizar</button> <button type="button" id="gps-close">Voltar ao painel</button></div></header><main class="gps-main"><div class="gps-intro"><h2>Posicionamento das equipes</h2><p id="gps-status" role="status">Carregando posições...</p></div><div class="gps-cards"><article id="gps-card-alerta"><span>Turnos não iniciados</span><strong id="gps-nao-iniciados">0</strong></article><article><span>Equipes monitoradas</span><strong id="gps-total">0</strong></article><article><span>Online</span><strong id="gps-online">0</strong></article><article><span>Offline</span><strong id="gps-offline">0</strong></article><article><span>Visíveis no filtro</span><strong id="gps-visible">0</strong></article></div><section class="gps-table-card gps-alert-card"><h3>Turnos não iniciados</h3><p class="gps-hint">Postos que passaram do prazo da escala (início + tolerância) sem iniciar o turno no app. Últimas 24 horas.</p><div class="r-table-wrap"><table class="r-table"><thead><tr><th>Posto</th><th>Escala</th><th>Início previsto</th><th>Prazo</th><th>Atraso</th><th>Situação</th></tr></thead><tbody id="gps-turnos"><tr><td colspan="6" class="gps-empty">Carregando...</td></tr></tbody></table></div></section><section class="gps-table-card gps-alert-card"><h3>Alertas do GPS <small>(últimas 24 horas)</small></h3><div class="r-table-wrap gps-scroll gps-scroll-sm"><table class="r-table"><thead><tr><th>Equipe</th><th>Alerta</th><th>Detalhe</th><th>Quando</th></tr></thead><tbody id="gps-alertas"><tr><td colspan="4" class="gps-empty">Carregando...</td></tr></tbody></table></div></section><div class="gps-layout"><section class="gps-table-card"><h3>Equipes em campo</h3><div class="gps-filters"><input id="gps-search" type="search" placeholder="Pesquisar equipe ou dispositivo" aria-label="Pesquisar equipe"><select id="gps-filter" aria-label="Filtrar conexão"><option value="TODOS">Todas as conexões</option><option value="ONLINE">Online</option><option value="OFFLINE">Offline</option></select></div><div class="r-table-wrap gps-scroll"><table class="r-table"><thead><tr><th>Equipe</th><th>Conexão</th><th>Bateria</th><th>Última coleta</th><th>Modo</th><th>Ação</th></tr></thead><tbody id="gps-teams"></tbody></table></div></section></div></main>';
     /* Estilos carregados por css/modules.css */
     /* Estilos do modal em css/modules.css */
     document.body.appendChild(overlay);

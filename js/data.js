@@ -73,6 +73,8 @@
      ==================================================================== */
   function criarSupabase() {
     var sb = null, carregando = null;
+    // Biblioteca do Supabase servida pelo próprio site (e guardada pelo service worker), para o app abrir sem internet.
+    var LIB = 'js/vendor/supabase-2.45.4.js';
     function lib() {
       if (sb) return Promise.resolve(sb);
       if (carregando) return carregando;
@@ -80,24 +82,77 @@
         function pronto() { sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } }); res(sb); }
         if (window.supabase && window.supabase.createClient) return pronto();
         var s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';
-        s.onload = pronto; s.onerror = function () { rej(new Error('Não foi possível carregar a biblioteca do Supabase.')); };
+        s.src = LIB;
+        s.onload = pronto; s.onerror = function () { carregando = null; var e = new Error('Não foi possível carregar a biblioteca do Supabase.'); e.rede = true; rej(e); };
         document.head.appendChild(s);
       });
       return carregando;
     }
     function ok(r) { if (r.error) throw erro(r.error); return r.data; }
+
+    /* ---------- Abertura sem internet ----------
+       Ao abrir, o painel confere a sessão e o perfil no servidor. Sem sinal isso falha, e o campo ficaria
+       sem acesso à própria fila. Por isso o último perfil confirmado pelo servidor fica guardado no aparelho e,
+       SÓ quando falta conexão, o painel abre com ele (modo "sem conexão"). Isso é só para a tela: toda gravação
+       continua passando pelo servidor, que confere login e perfil quando o sinal volta. */
+    var CHAVE_PERFIL = 'painel-perfil-confirmado';
+    var CHAVE_SESSAO = (function () { try { return 'sb-' + new URL(C.SUPABASE_URL).hostname.split('.')[0] + '-auth-token'; } catch (e) { return ''; } })();
+    var VALIDADE_OFFLINE_MS = 30 * 24 * 3600 * 1000;  // perfil guardado há mais de 30 dias não abre o painel sem conexão
+    function lsLer(k) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+    function guardarPerfil(user, p) {
+      try {
+        if (p && p.ativo && p.perfil) localStorage.setItem(CHAVE_PERFIL, JSON.stringify({ id: user.id, email: user.email, nome: p.nome || user.email, perfil: p.perfil, em: Date.now() }));
+        else localStorage.removeItem(CHAVE_PERFIL);
+      } catch (e) { /* sem armazenamento: só não abre sem conexão */ }
+    }
+    // Usuário da sessão gravada pelo Supabase no aparelho, mesmo com o token vencido (sem rede não dá para renovar).
+    function usuarioGuardado() {
+      var s = CHAVE_SESSAO && lsLer(CHAVE_SESSAO), u = s && (s.user || (s.currentSession && s.currentSession.user));
+      return u && u.id ? { id: u.id, email: u.email } : null;
+    }
+    function perfilOffline() {
+      var u = usuarioGuardado(), p = lsLer(CHAVE_PERFIL);
+      if (!u || !p || p.id !== u.id || !p.perfil || !(Date.now() - p.em < VALIDADE_OFFLINE_MS)) return null;
+      return { nome: p.nome, email: p.email, perfil: p.perfil };
+    }
+    function semRede(e) { return navigator.onLine === false || !!(e && (e.rede || /Failed to fetch|NetworkError|Load failed|network request failed/i.test(e.message || ''))); }
+    function limparSessaoLocal() {
+      try { localStorage.removeItem(CHAVE_PERFIL); if (CHAVE_SESSAO) { localStorage.removeItem(CHAVE_SESSAO); localStorage.removeItem(CHAVE_SESSAO + '-code-verifier'); } } catch (e) {}
+    }
+
+    // Sem rede, o Supabase insiste em renovar o login por ~30 s antes de desistir. Com perfil guardado, o painel não espera tanto.
+    var ESPERA_MAX_MS = 6000;
+    function comLimite(promessa, ms, seEsgotar) {
+      return Promise.race([promessa, new Promise(function (res) { setTimeout(function () { res(seEsgotar); }, ms); })]);
+    }
+    // Sessão de verdade (token válido ou renovado). Usada para ENVIAR: sem ela o envio espera, não vira erro.
+    async function sessaoValida() {
+      var c = await lib(), r = await c.auth.getSession();
+      if (r.error) throw erro(r.error);
+      if (r.data.session) return r.data.session;
+      if (navigator.onLine === false) { var e = new Error('Failed to fetch'); throw erro(e); }
+      var x = new Error('sessao_expirada'); x.hint = 'Sua sessão expirou. Saia e entre de novo para enviar os registros guardados.'; throw erro(x);
+    }
+
     var api = {
       modo: 'supabase',
       async iniciar() {
-        var c = await lib(); var s = ok(await c.auth.getSession());
-        if (!s.session) return { logado: false };
-        return api.perfil(s.session.user);
+        var off = perfilOffline(), modoOff = off && { logado: true, usuario: off, offline: true };
+        if (modoOff && navigator.onLine === false) return modoOff;   // aparelho sabe que está sem rede: abre na hora
+        var tentativa = (async function () {
+          var c = await lib(); var s = ok(await c.auth.getSession());
+          if (!s.session) return { logado: false };
+          return await api.perfil(s.session.user);
+        })();
+        if (!modoOff) return tentativa;
+        // tem perfil guardado: se o servidor não responder a tempo (sinal fraco, sem rede), abre com ele
+        return comLimite(tentativa.catch(function (e) { if (semRede(e)) return modoOff; throw e; }), ESPERA_MAX_MS, modoOff);
       },
       async perfil(user) {
         var c = await lib();
         var r = await c.from('perfis').select('nome,perfil,ativo,email').eq('id', user.id).maybeSingle();
         var p = ok(r);
+        guardarPerfil(user, p);
         if (!p || !p.ativo) return { logado: true, usuario: { nome: (p && p.nome) || user.email, email: user.email, perfil: null } };
         return { logado: true, usuario: { nome: p.nome || user.email, email: user.email, perfil: p.perfil } };
       },
@@ -106,7 +161,14 @@
         if (r.error) { var e = new Error(/Invalid login/i.test(r.error.message) ? 'E-mail ou senha incorretos.' : r.error.message); throw e; }
         return api.perfil(r.data.user);
       },
-      async sair() { var c = await lib(); await c.auth.signOut(); },
+      // Sair precisa funcionar sem sinal: o Supabase só apaga a sessão do aparelho se o servidor responder,
+      // então, se a chamada falhar, a sessão e o perfil guardados são apagados aqui mesmo.
+      async sair() {
+        var falhou = false;
+        try { var c = await lib(); var r = await comLimite(c.auth.signOut(), 3000, { error: 'sem_resposta' }); falhou = !!(r && r.error); } catch (e) { falhou = true; }
+        limparSessaoLocal();
+        if (falhou && sb) { sb = null; carregando = null; }   // cliente novo, sem a sessão antiga em memória
+      },
       // Tipificação (natureza > tipo > subtipo) e os formulários que cada combinação abre. Vem do banco: tabelas tipificacao e formularios.
       async tipificacao() {
         var c = await lib();
@@ -160,12 +222,21 @@
         return { ocorrenciaId: (r && r.ocorrencia_id) || null };
       },
       async adicionarAnalise(a) { var c = await lib(); ok(await c.rpc('adicionar_analise', { p_ocorrencia_id: a.ocorrenciaId, p_texto: a.texto })); },
-      async usuarioId() { var c = await lib(); var r = ok(await c.auth.getSession()); return r.session ? r.session.user.id : null; },
+      // Sem rede (token vencido ou biblioteca indisponível) vale o usuário guardado, para a fila do campo continuar sendo a dele.
+      async usuarioId() {
+        var u = perfilOffline() && usuarioGuardado();
+        if (u && navigator.onLine === false) return u.id;
+        var tentativa = (async function () {
+          try { var c = await lib(); var r = ok(await c.auth.getSession()); if (r.session) return r.session.user.id; } catch (e) { if (!semRede(e)) throw e; }
+          return u ? u.id : null;
+        })();
+        return u ? comLimite(tentativa, ESPERA_MAX_MS, u.id) : tentativa;
+      },
       offline: function () { return false; },
       simularOffline: function () {},
       // Registro do campo. Idempotente: o mesmo clientId nunca cria dois eventos, mesmo que o envio seja repetido.
       async registrarEvento(a) {
-        var c = await lib(), uid = await api.usuarioId(), bucket = C.BUCKET || 'evidencias', caminhos = [];
+        var c = await lib(), uid = (await sessaoValida()).user.id, bucket = C.BUCKET || 'evidencias', caminhos = [];
         for (var i = 0; i < (a.fotos || []).length; i++) {
           var caminho = uid + '/' + a.clientId + '-' + (i + 1) + '.jpg';
           var up = await c.storage.from(bucket).upload(caminho, a.fotos[i], { contentType: 'image/jpeg', upsert: false });

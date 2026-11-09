@@ -764,7 +764,21 @@
     if (S.userPop) { S.userPop = false; renderTopbar(); return; }
     if (S.sel) fechar();
   });
-  window.addEventListener('online', function () { S.sync = 'syncing'; renderSub(); carregar({ silencioso: true }); });
+  window.addEventListener('online', function () { S.sync = 'syncing'; renderSub(); if (S.abertoOffline) revalidar(); else carregar({ silencioso: true }); });
+  // Painel aberto sem conexão (com o último perfil guardado): quando o sinal volta, confere login e perfil no servidor.
+  // Também tenta a cada minuto, porque com sinal fraco o aparelho nem sempre avisa que a conexão voltou.
+  var revalidando = false;
+  setInterval(function () { if (S.abertoOffline && navigator.onLine !== false && !document.hidden) revalidar(); }, 60000);
+  function revalidar() {
+    if (revalidando) return; revalidando = true;
+    D.iniciar().finally(function () { revalidando = false; }).then(function (r) {
+      if (r.offline) return;                       // ainda sem acesso ao servidor: tenta de novo no próximo "online"
+      S.abertoOffline = false;
+      if (!r.logado) { pararTudo(); fechar(); S.usuario = null; S.tela = 'login'; renderApp(); toast('warning', 'Entre de novo', 'Sua sessão expirou. Os registros que estão no aparelho continuam guardados.'); return; }
+      if (!S.usuario || r.usuario.perfil !== S.usuario.perfil) { entrou(r.usuario); return; }
+      S.usuario = r.usuario; if (!ehCampo()) carregar({ silencioso: true });
+    }).catch(function () { /* servidor ainda instável: mantém o painel como está */ });
+  }
   window.addEventListener('offline', function () { S.sync = 'offline'; renderSub(); });
 
   /* ---------- Ciclo de vida ---------- */
@@ -787,10 +801,14 @@
     carregarTipif().catch(function () { toast('warning', 'Tipificação indisponível', 'A triagem precisa da lista de natureza, tipo e subtipo. Atualize a página.'); });
     ligarPainel();
   }
-  function sair() { pararTudo(); fechar(); S.userPop = false; D.sair().catch(function () {}).then(function () { S.usuario = null; S.dados = { linhas: [], total: 0 }; S.kpi = null; S.tela = 'login'; renderApp(); }); }
+  function sair() { pararTudo(); fechar(); S.userPop = false; S.abertoOffline = false; D.sair().catch(function () {}).then(function () { S.usuario = null; S.dados = { linhas: [], total: 0 }; S.kpi = null; S.tela = 'login'; renderApp(); }); }
   function iniciar() {
     S.tela = 'carregando'; renderApp();
-    D.iniciar().then(function (r) { if (!r.logado) { S.tela = 'login'; renderApp(); return; } entrou(r.usuario); })
+    D.iniciar().then(function (r) {
+      if (!r.logado) { S.tela = 'login'; renderApp(); return; }
+      S.abertoOffline = !!r.offline; entrou(r.usuario);
+      if (r.offline) toast('info', 'Sem conexão', 'Painel aberto com o seu último acesso. Login e perfil serão conferidos quando o sinal voltar.');
+    })
       .catch(function (e) { S.tela = 'erroInicial'; S.erro = e.message; renderApp(); });
   }
   window.PainelUI = { esc: esc, fmtData: fmtData, fmtDur: fmtDur, badge: badge, estado: estado, toast: toast, confirmar: confirmar };

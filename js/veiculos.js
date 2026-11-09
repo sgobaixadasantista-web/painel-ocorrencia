@@ -5,7 +5,7 @@ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 let client;
 async function getClient(){
  if(!C.SUPABASE_URL||!C.SUPABASE_ANON_KEY)throw Error('Supabase não configurado.');
- if(!window.supabase){await new Promise((ok,fail)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';s.onload=ok;s.onerror=fail;document.head.appendChild(s);});}
+ if(!window.supabase){await new Promise((ok,fail)=>{const s=document.createElement('script');s.src='js/vendor/supabase-2.45.4.js';s.onload=ok;s.onerror=fail;document.head.appendChild(s);});}
  return client||(client=window.supabase.createClient(C.SUPABASE_URL,C.SUPABASE_ANON_KEY));
 }
 let records=[],page=1;const PAGE_SIZE=15;let filtered=[];

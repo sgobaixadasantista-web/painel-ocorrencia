@@ -1,7 +1,7 @@
 (function(){'use strict';
 const C=window.PAINEL_CONFIG||{};let sb=null,records=[],searchTerm='';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-async function client(){if(!window.supabase)await new Promise((ok,fail)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';s.onload=ok;s.onerror=fail;document.head.appendChild(s)});return sb||(sb=window.supabase.createClient(C.SUPABASE_URL,C.SUPABASE_ANON_KEY))}
+async function client(){if(!window.supabase)await new Promise((ok,fail)=>{const s=document.createElement('script');s.src='js/vendor/supabase-2.45.4.js';s.onload=ok;s.onerror=fail;document.head.appendChild(s)});return sb||(sb=window.supabase.createClient(C.SUPABASE_URL,C.SUPABASE_ANON_KEY))}
 const root=()=>document.getElementById('colab-overlay');
 function notice(m){let el=document.getElementById('colab-message');if(el)el.textContent=m}
 function close(){root()?.remove()}

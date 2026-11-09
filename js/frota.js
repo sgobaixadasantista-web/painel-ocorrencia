@@ -10,7 +10,7 @@ function root(){return document.getElementById('frota-overlay')}
 function message(s,error=false){const x=document.getElementById('frota-msg');if(x){x.textContent=s;x.style.color=error?'#b91c1c':'#17603b'}}
 async function db(){
  if(!DB.SUPABASE_URL||!DB.SUPABASE_ANON_KEY)throw Error('Configure o Supabase em js/config.js antes de usar a frota.');
- if(!window.supabase){await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';s.onload=resolve;s.onerror=reject;document.head.appendChild(s);});}
+ if(!window.supabase){await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='js/vendor/supabase-2.45.4.js';s.onload=resolve;s.onerror=reject;document.head.appendChild(s);});}
  return client||(client=window.supabase.createClient(DB.SUPABASE_URL,DB.SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true}}));
 }
 function status(v){const a=inspections.filter(i=>i.veiculo_id===v.id&&i.status_checklist!=='PENDENTE').sort((a,b)=>b.data_checklist.localeCompare(a.data_checklist)||b.criado_em.localeCompare(a.criado_em))[0];if(!a)return ['SEM CHECKLIST','warn'];if(a.status_checklist==='IRREGULAR')return ['IRREGULAR','bad'];let days=Math.round((new Date(a.validade_checklist+'T12:00:00')-new Date(today()+'T12:00:00'))/86400000);return days<0?['VENCIDO','bad']:days<=3?['VENCE EM '+days+' DIA(S)','warn']:['EM DIA','ok']}

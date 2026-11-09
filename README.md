@@ -21,13 +21,15 @@ js/app.js                       telas e ações da central e da inteligência
 js/campo.js                     painel de campo (registro em etapas, fotos, GPS, sincronização)
 js/fila.js                      fila offline do aparelho (IndexedDB)
 sw.js manifest.webmanifest      app instalável e abertura sem internet
+js/vendor/supabase-2.45.4.js    biblioteca do Supabase (no projeto, para abrir sem internet)
 assets/                         fontes Inter, logos e ícones ferroviários do DNA Rumo
 supabase/migrations/
   001_painel_ocorrencias.sql    tabelas, regras de acesso por perfil, funções do fluxo, fotos
   002_inteligencia.sql          análises de IA, indicadores e gráficos da inteligência
   003_campo.sql                 registro sem sinal (horário real, sem duplicar), GPS, contas novas inativas
   004_tipificacao.sql           natureza > tipo > subtipo (156 combinações), formulários por combinação, triagem única
-  005_agentes_ia.sql            3 agentes de IA e 7 minutas do Rumo - SLA, editáveis só por admin
+  005_agentes_ia.sql            3 agentes de IA e 7 minutas do Rumo - SLA (AINDA NÃO ESTÁ NO REPOSITÓRIO; veja docs/SQL-FALTANTE.md)
+supabase/testes/testar_004.mjs  teste da 004 em Postgres na memória (banco novo e banco como o de produção)
 supabase/dados/                 planilha de tipificação e configuração dos agentes (fonte dos dados iniciais)
 supabase/atualizar_*.sql        reaplicam a planilha e os agentes sem apagar o que você ajustou
 tools/                          gerar_tipificacao.py e gerar_agentes.py (geram os SQL e os dados da demonstração)
@@ -38,7 +40,7 @@ supabase/seed_demo.sql          eventos de exemplo (opcional, só para teste)
 ## Como colocar no ar
 
 1. **Crie um projeto** em supabase.com.
-2. **Rode o banco:** *SQL Editor* > cole `001_painel_ocorrencias.sql` > *Run*; depois `002_inteligencia.sql`, `003_campo.sql`, `004_tipificacao.sql` e `005_agentes_ia.sql`. Cada um **uma vez só**, nessa ordem.
+2. **Rode o banco:** *SQL Editor* > cole `001_painel_ocorrencias.sql` > *Run*; depois `002_inteligencia.sql`, `003_campo.sql` e `004_tipificacao.sql`, nessa ordem. A 001 a 003 rodam **uma vez só**; a 004 pode ser rodada num banco que já tenha parte da tipificação (não apaga nem sobrescreve o que existe). A `005_agentes_ia.sql` ainda não está no repositório.
 3. **Crie as pessoas:** *Authentication > Users > Add user* (e-mail e senha). Toda conta nova nasce **inativa**: não abre painel nenhum até você liberar.
 4. **Libere cada pessoa e dê o perfil**, no *SQL Editor*:
    ```sql
@@ -71,7 +73,11 @@ Sem preencher o passo 5, o painel abre em **modo demonstração**: dados fictíc
 
 **Instalar no celular:** abra o endereço no navegador e use "Adicionar à tela inicial". O aplicativo passa a abrir mesmo sem internet (com os registros já carregados e a fila do aparelho).
 
-**Limites a conhecer:** a fila fica no aparelho e no navegador usado; limpar os dados do navegador apaga o que ainda não foi enviado. Em navegador sem armazenamento local (alguns modos anônimos), o painel avisa para não fechar a página. O app só envia enquanto está aberto (não há envio em segundo plano com a tela bloqueada).
+**Abrir sem sinal:** o login precisa ter sido feito com internet ao menos uma vez nos últimos 30 dias. A partir daí, sem conexão, o app abre com o último perfil confirmado pelo servidor. Ele abre na hora quando o aparelho sabe que está offline, ou em até 6 s com sinal fraco, e mostra o aviso "Sem conexão". Quando o sinal volta, login e perfil são conferidos de novo: conta desativada ou sessão expirada voltam para a tela de entrada, sem perder a fila. "Sair da conta" funciona sem sinal e apaga do aparelho a sessão e o perfil guardados (a fila de registros não enviados continua guardada para a mesma pessoa).
+
+**Ao publicar uma versão nova:** troque `VERSAO` em `sw.js`. Se um arquivo novo entrar no `index.html`, ele também precisa entrar na lista `ARQUIVOS`, senão o app instalado abre quebrado sem internet. A biblioteca do Supabase fica no próprio projeto (`js/vendor/`), e não num site externo, pelo mesmo motivo.
+
+**Limites a conhecer:** a fila fica no aparelho e no navegador usado; limpar os dados do navegador apaga o que ainda não foi enviado. Em navegador sem armazenamento local (alguns modos anônimos), o painel avisa para não fechar a página. O app só envia enquanto está aberto (não há envio em segundo plano com a tela bloqueada). O app pede ao navegador que não apague a fila quando faltar espaço. O Chrome do app instalado costuma aceitar; outros navegadores, principalmente o Safari do iPhone, podem não garantir.
 
 ## Tipificação e formulários
 
