@@ -4,7 +4,7 @@
    Para forçar atualização do aplicativo em todos os aparelhos, troque o número em VERSAO.
    ATENÇÃO: todo arquivo novo carregado pelo index.html precisa entrar em ARQUIVOS (e VERSAO precisa subir),
    senão o app instalado abre quebrado sem internet. */
-var VERSAO = 'v4';
+var VERSAO = 'v5';
 var CACHE = 'security-rumo-' + VERSAO;
 var ARQUIVOS = ['./', 'index.html', 'manifest.webmanifest',
   'css/tokens.css', 'css/rumo.css', 'css/app.css', 'css/design-system.css', 'css/navigation.css', 'css/photo-gallery.css', 'css/modules.css',

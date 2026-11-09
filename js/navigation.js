@@ -4,6 +4,26 @@
 const app=()=>document.getElementById('app');
 const overlays={'mapa-gps':'gps-overlay','efetivo-turno':'efetivo-overlay','veiculo-turno':'veiculos-overlay','frota':'frota-overlay','colaboradores':'colab-overlay'};
 const closeIds={'gps-overlay':'gps-close','efetivo-overlay':'ef-close','veiculos-overlay':'vt-close','frota-overlay':'frota-close','colab-overlay':'colab-close'};
+// Abre cada módulo direto pela API que ele expõe. (Antes o menu clicava em botões da
+// barra superior; esses botões foram removidos e os módulos deixaram de abrir.)
+// [objeto global do módulo, função que abre]
+const openers={
+ 'mapa-gps':['SecurityTrackingMap','show'],
+ 'efetivo-turno':['SecurityEfetivo','show'],
+ 'veiculo-turno':['SecurityVeiculos','show'],
+ 'frota':['SecurityFrota','open'],
+ 'colaboradores':['SecurityColaboradores','show']
+};
+function openModule(id){
+ const [global,fn]=openers[id]||[];
+ const mod=global&&window[global];
+ if(!mod||typeof mod[fn]!=='function'){console.warn('Módulo não carregado:',id);return false;}
+ try{
+  const r=mod[fn]();
+  if(r&&typeof r.catch==='function')r.catch(e=>console.error('Falha ao abrir o módulo '+id,e));
+  return true;
+ }catch(e){console.error('Falha ao abrir o módulo '+id,e);return false;}
+}
 
 let expanded=true,mobileOpen=false,modeSeen='',current='nav-events',queued=false;
 // Menu lateral inicia recolhido; abertura somente por interação explícita.
@@ -53,8 +73,7 @@ function navigate(id){
  }else{
   if(document.getElementById(overlays[id])){current=id;syncActive();return;}
   closeOverlay();
-  const button=app()?.querySelector('[data-act="'+id+'"]');
-  if(button)button.click();else {console.warn('Ação do módulo não encontrada:',id);return;}
+  if(!openModule(id))return;
  }
  current=id;syncActive();
 }

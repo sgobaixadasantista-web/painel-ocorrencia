@@ -95,7 +95,10 @@
       if(result.error)throw result.error;
       positions=result.data||[];draw();
       status.textContent='Atualizado em '+new Date().toLocaleTimeString('pt-BR')+' · atualização automática a cada 20 segundos';
-    }catch(error){status.textContent='Não foi possível atualizar: '+(error.message||error);}
+    }catch(error){
+      status.textContent='Não foi possível atualizar: '+(error.message||error);
+      if(document.getElementById('gps-turnos')){const e={ok:false,erro:error.message||String(error)};drawAlerts(e,e);}
+    }
   }
   function closeMap(){
     if(modalCleanup){document.removeEventListener('keydown',modalCleanup);modalCleanup=null;}
