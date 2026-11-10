@@ -204,3 +204,38 @@ body.ccs-shell #app > header.r-topbar.ccs-topbar{
   top:0;
  }
 }
+
+/* Padrão para módulos novos: <div id="xxx-overlay" class="ccs-modulo"> + .ccs-modulo-painel + .ccs-module-topbar.
+   Abre ao lado do menu lateral, como os demais módulos. Registre o módulo em js/navigation.js (overlays, closeIds, openers). */
+.ccs-modulo{position:fixed;top:0;bottom:0;right:0;left:0;z-index:125;overflow:auto;box-sizing:border-box;background:var(--rumo-bg,#f4f6f8);color:var(--rumo-text,#0b2942);font:14px Inter,system-ui,Arial,sans-serif}
+body.ccs-shell .ccs-modulo{left:var(--ccs-sidebar-width)}
+body.ccs-shell.ccs-sidebar-collapsed .ccs-modulo{left:var(--ccs-sidebar-compact)}
+@media(max-width:1023px){body.ccs-shell .ccs-modulo,body.ccs-shell.ccs-sidebar-collapsed .ccs-modulo{left:0}}
+@media(min-width:1024px){body.ccs-shell.ccs-sidebar-collapsed .ccs-modulo{left:var(--ccs-sidebar-width)}}
+.ccs-modulo-painel{max-width:1480px;min-height:100%;margin:0 auto;padding:16px;box-sizing:border-box}
+.ccs-modulo .ccs-module-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;min-height:60px;box-sizing:border-box;padding:10px 18px;margin:-16px -16px 16px;background:#0b2942;color:#fff}
+.ccs-modulo .ccs-module-topbar button{min-height:38px;padding:8px 12px;border:1px solid #ffffff26;background:#ffffff14;color:#fff;border-radius:8px;font:600 12px Inter,system-ui,Arial,sans-serif;white-space:nowrap;cursor:pointer}
+.ccs-modulo .ccs-module-topbar button:hover{background:#ffffff29}
+.ccs-modulo-intro h2{margin:4px 0 4px;font-size:20px}
+.ccs-modulo-intro p{margin:0;color:#4f6275}
+.ccs-modulo-msg{min-height:20px;margin:12px 0}
+.ccs-modulo-msg.is-erro{color:#b42318}
+.ccs-modulo-msg.is-ok{color:#137547}
+.ccs-modulo-card{background:#fff;border:1px solid #d9e2eb;border-radius:12px;padding:18px;margin:16px 0;box-shadow:var(--rumo-shadow-card,0 2px 9px #0001)}
+.ccs-modulo-card h3{margin:0 0 14px;font-size:17px}
+.ccs-modulo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px}
+.ccs-modulo label{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:13px}
+.ccs-modulo-dias{display:flex;flex-wrap:wrap;gap:6px 16px;padding:4px 0}
+.ccs-modulo .ccs-modulo-dias label.ccs-modulo-dia{display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin:0;font-weight:500}
+.ccs-modulo .ccs-modulo-dia input{width:auto}
+.ccs-modulo input,.ccs-modulo select{padding:10px;border:1px solid #aebdcb;border-radius:7px;font:inherit;background:#fff;color:#0b2942;max-width:100%;box-sizing:border-box}
+.ccs-modulo input:focus-visible,.ccs-modulo select:focus-visible,.ccs-modulo button:focus-visible{outline:2px solid #f58220;outline-offset:2px}
+.ccs-modulo fieldset{border:1px solid #d9e2eb;border-radius:8px}
+.ccs-modulo-span{grid-column:1/-1}
+.ccs-modulo-botoes{align-self:end;display:flex;gap:8px;flex-wrap:wrap}
+.ccs-modulo-card button{padding:9px 12px;border:0;border-radius:7px;background:#e7eef5;color:#0b2942;font-weight:700;cursor:pointer}
+.ccs-modulo-card button.is-primario{background:#f58220;color:#10283b}
+.ccs-modulo-scroll{overflow-x:auto}
+.ccs-modulo table{width:100%;border-collapse:collapse}
+.ccs-modulo th,.ccs-modulo td{padding:10px;text-align:left;border-bottom:1px solid #e1e6ee;font-size:13px}
+@media(max-width:650px){.ccs-modulo-painel{padding:12px}.ccs-modulo .ccs-module-topbar{margin:-12px -12px 14px;padding:10px 12px}}

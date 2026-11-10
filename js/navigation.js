@@ -2,17 +2,20 @@
 (function(){
 'use strict';
 const app=()=>document.getElementById('app');
-const overlays={'mapa-gps':'gps-overlay','efetivo-turno':'efetivo-overlay','veiculo-turno':'veiculos-overlay','frota':'frota-overlay','colaboradores':'colab-overlay'};
-const closeIds={'gps-overlay':'gps-close','efetivo-overlay':'ef-close','veiculos-overlay':'vt-close','frota-overlay':'frota-close','colab-overlay':'colab-close'};
+const overlays={'mapa-gps':'gps-overlay','efetivo-turno':'efetivo-overlay','veiculo-turno':'veiculos-overlay','frota':'frota-overlay','colaboradores':'colab-overlay','gestao-postos':'postos-overlay'};
+const closeIds={'gps-overlay':'gps-close','efetivo-overlay':'ef-close','veiculos-overlay':'vt-close','frota-overlay':'frota-close','colab-overlay':'colab-close','postos-overlay':'postos-close'};
 // Abre cada módulo direto pela API que ele expõe. (Antes o menu clicava em botões da
 // barra superior; esses botões foram removidos e os módulos deixaram de abrir.)
 // [objeto global do módulo, função que abre]
+// Módulo novo: crie js/<modulo>.js com window.SecurityXxx={show}, um overlay <div id="xxx-overlay" class="ccs-modulo">
+// com botão de fechar, e registre aqui em overlays, closeIds e openers (e no menu em items()). Ver css/navigation.css.
 const openers={
  'mapa-gps':['SecurityTrackingMap','show'],
  'efetivo-turno':['SecurityEfetivo','show'],
  'veiculo-turno':['SecurityVeiculos','show'],
  'frota':['SecurityFrota','open'],
- 'colaboradores':['SecurityColaboradores','show']
+ 'colaboradores':['SecurityColaboradores','show'],
+ 'gestao-postos':['SecurityPostos','show']
 };
 function openModule(id){
  const [global,fn]=openers[id]||[];
@@ -67,7 +70,6 @@ function closeMobile(){mobileOpen=false;document.body.classList.remove('ccs-side
 function setExpanded(next){expanded=true;document.body.classList.remove('ccs-sidebar-collapsed');const toggle=document.getElementById('ccs-collapse');if(toggle){toggle.setAttribute('aria-expanded','true');toggle.setAttribute('aria-label','Menu lateral fixo');toggle.hidden=true;}}
 function navigate(id){
  closeMobile();if(!mode())return;
- if(id==='gestao-postos'){window.location.assign('gestao-postos.html');return;}
  if(id==='nav-intel'){closeOverlay();current=id;syncActive();return;}
  if(id==='nav-events'||id==='nav-occurrences'){
   closeOverlay();
