@@ -31,13 +31,16 @@ function mode(){
  const el=app();if(!el || !el.querySelector('.r-topbar') || !el.querySelector('main.page') || el.querySelector('#campo-root'))return null;
  return /Inteligência/i.test(el.querySelector('.r-page-h1')?.textContent||'')?'inteligencia':'central';
 }
+// Postos e Escalas é só do administrador: esconde o item quando o perfil confirmado pelo servidor é outro.
+// Sem perfil guardado (modo demonstração) o item aparece e a própria página confere o acesso.
+function podeGerirPostos(){try{const p=JSON.parse(localStorage.getItem('painel-perfil-confirmado')||'null');return !p||!p.perfil||p.perfil==='admin';}catch(e){return true;}}
 function items(){
  const m=mode();if(!m)return [];
  if(m==='inteligencia')return [{title:'INTELIGÊNCIA',links:[{id:'nav-intel',name:'Ocorrências para análise'},{id:'mapa-gps',name:'Monitoramento GPS'}]}];
  return [
  {title:'OPERAÇÕES',links:[{id:'nav-events',name:'Eventos'},{id:'nav-occurrences',name:'Ocorrências'},{id:'mapa-gps',name:'Monitoramento GPS'}]},
  {title:'GESTÃO',links:[{id:'efetivo-turno',name:'Efetivo no Turno'},{id:'veiculo-turno',name:'Veículo no Turno'},{id:'frota',name:'Frota e Checklists'}]},
- {title:'CADASTROS',links:[{id:'colaboradores',name:'Colaboradores'},{id:'gestao-postos',name:'Postos e Escalas'}]}
+ {title:'CADASTROS',links:[{id:'colaboradores',name:'Colaboradores'}].concat(podeGerirPostos()?[{id:'gestao-postos',name:'Postos e Escalas'}]:[])}
  ];
 }
 function closeOverlay(){
