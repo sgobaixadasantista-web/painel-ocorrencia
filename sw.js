@@ -4,7 +4,7 @@
    Para forçar atualização do aplicativo em todos os aparelhos, troque o número em VERSAO.
    ATENÇÃO: todo arquivo novo carregado pelo index.html precisa entrar em ARQUIVOS (e VERSAO precisa subir),
    senão o app instalado abre quebrado sem internet. */
-var VERSAO = 'v9';
+var VERSAO = 'v10';
 var CACHE = 'security-rumo-' + VERSAO;
 var ARQUIVOS = ['./', 'index.html', 'manifest.webmanifest',
   'css/tokens.css', 'css/rumo.css', 'css/app.css', 'css/design-system.css', 'css/navigation.css', 'css/photo-gallery.css', 'css/modules.css',
@@ -15,7 +15,7 @@ var ARQUIVOS = ['./', 'index.html', 'manifest.webmanifest',
   'assets/fonts/Inter-400.woff2', 'assets/fonts/Inter-600.woff2', 'assets/fonts/Inter-700.woff2', 'assets/fonts/Inter-800.woff2'];
 
 self.addEventListener('install', function (e) {
-  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(ARQUIVOS); }).then(function () { return self.skipWaiting(); }));
+  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(ARQUIVOS.map(function (u) { return new Request(u, { cache: 'reload' }); })); }).then(function () { return self.skipWaiting(); }));
 });
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k.indexOf('security-rumo-') === 0 && k !== CACHE; }).map(function (k) { return caches.delete(k); })); }).then(function () { return self.clients.claim(); }));

@@ -405,15 +405,15 @@
   }
   /* ----- Formulário de referência da combinação (definido na tabela "formularios") ----- */
   function campoRef(c) {
-    var id = 'f-' + c.chave, req = c.obrigatorio ? '<span class="r-req" aria-hidden="true">*</span>' : '', at = ' id="' + id + '" data-k="' + esc(c.chave) + '" data-t="' + esc(c.tipo) + '"', ctrl;
+    var id = 'f-' + String(c.chave).replace(/[^A-Za-z0-9_-]/g, '_'), req = c.obrigatorio ? '<span class="r-req" aria-hidden="true">*</span>' : '', at = ' id="' + id + '" data-k="' + esc(c.chave) + '" data-t="' + esc(c.tipo) + '"', ctrl;
     if (c.chave === 'sb') ctrl = '<select class="r-input"' + at + '><option value="">Selecione a sigla (SB)</option>' + (S.tipif.siglas || []).map(function (s) { return '<option value="' + esc(s.sigla) + '">' + esc(s.sigla) + '</option>'; }).join('') + '</select>';
-    else if (c.tipo === 'textarea') ctrl = '<textarea class="r-input"' + at + ' maxlength="' + (c.max || 2000) + '"></textarea>';
+    else if (c.tipo === 'textarea') ctrl = '<textarea class="r-input"' + at + ' maxlength="' + (Number(c.max) || 2000) + '"></textarea>';
     else if (c.tipo === 'select') ctrl = '<select class="r-input"' + at + '><option value="">Selecione</option>' + (c.opcoes || []).map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '</select>';
     else if (c.tipo === 'sim_nao') ctrl = '<select class="r-input"' + at + '><option value="">Selecione</option><option value="sim">Sim</option><option value="nao">Não</option></select>';
     else if (c.tipo === 'hora') ctrl = '<input class="r-input"' + at + ' type="time">';
     else if (c.tipo === 'numero') ctrl = '<input class="r-input"' + at + ' type="text" inputmode="numeric" maxlength="9" autocomplete="off">';
     else if (c.tipo === 'km') ctrl = '<input class="r-input"' + at + ' type="text" placeholder="115+500" maxlength="9" autocomplete="off">';
-    else ctrl = '<input class="r-input"' + at + ' type="text" maxlength="' + (c.max || 200) + '" autocomplete="off">';
+    else ctrl = '<input class="r-input"' + at + ' type="text" maxlength="' + (Number(c.max) || 200) + '" autocomplete="off">';
     return '<div class="r-field"><label class="r-label" for="' + id + '">' + esc(c.rotulo) + req + '</label>' + ctrl + (c.ajuda ? '<span class="r-hint">' + esc(c.ajuda) + '</span>' : '') + '<div class="r-err" id="er-' + id + '" hidden></div></div>';
   }
   function aoEscolherSubtipo() {
@@ -566,7 +566,7 @@
     // Agente 2
     h += '<details class="ia-etapa" open><summary>2. Tipificação penal e minuta</summary>' +
       (a2.tipificacao ? '<dl class="kv"><dt>Tipificação</dt><dd><b>' + esc(a2.tipificacao.artigo) + '</b> · uso interno, não vai para o boletim<br>' + esc(a2.tipificacao.fundamento) + '</dd>' +
-        '<dt>Minuta</dt><dd>' + (a2.minuta ? '<b>Minuta ' + a2.minuta.numero + ' — ' + esc(a2.minuta.nome) + '</b><br>' + esc(a2.minuta.justificativa) : '<b>' + esc(a2.mensagem || 'MINUTA NÃO APLICÁVEL') + '</b>') + '</dd></dl>' : '') +
+        '<dt>Minuta</dt><dd>' + (a2.minuta ? '<b>Minuta ' + esc(a2.minuta.numero) + ' — ' + esc(a2.minuta.nome) + '</b><br>' + esc(a2.minuta.justificativa) : '<b>' + esc(a2.mensagem || 'MINUTA NÃO APLICÁVEL') + '</b>') + '</dd></dl>' : '') +
       (a2.encerrado && a2.mensagem && !a2.tipificacao ? '<p class="txt"><b>' + esc(a2.mensagem) + '</b></p>' : '') + '</details>';
     // Agente 3
     h += '<div class="ia-etapa-fixa"><h4 class="sec-t">3. Parecer para a Delegacia Digital</h4>';
@@ -681,7 +681,7 @@
         var r = S.aba === 'eventos' ? await D.listarEventos(f) : await D.listarOcorrencias(f);
         todos = todos.concat(r.linhas); total = r.total; pg++;
       } while (todos.length < total && pg <= 20);
-      var cel = function (v) { v = v == null ? '' : String(v); return /[;"\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      var cel = function (v) { v = v == null ? '' : String(v); if (/^[=+\-@\t\r]/.test(v)) v = "'" + v; /* texto do campo não vira fórmula no Excel */ return /[;"\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
       var ev = S.aba === 'eventos', cab, rows;
       if (ev) { cab = ['Número', 'Registrado em', 'Local', 'Descrição', 'Registrado por', 'Tempo', 'Status', 'Triagem', 'Tipificação']; rows = todos.map(function (e) { return [e.numero, fmtData(e.criadoEm), e.local, e.descricao, e.criadoPorNome, tempoTxt(e), tomEvento(e).t, lbl(TRIAGEM, e.triagemCategoria), e.tipificacaoId ? tipifTxt(e.tipifNatureza, e.tipifTipo, e.tipifSubtipo) : '']; }); }
       else { cab = ['Número', 'Evento', 'Fato em', 'Local', 'Natureza', 'Tipo', 'Subtipo', 'Tempo', 'Status', 'Boletim', 'Classificação']; rows = todos.map(function (o) { return [o.numero, o.eventoNumero, fmtData(o.fatoEm), o.local, lbl(NATUREZAS, o.natureza), o.tipo, o.subtipo, tempoTxt(o), tomOc(o).t, o.boletimExiste == null ? 'Pendente' : (o.boletimExiste ? 'Sim' + (o.boletimNumero ? ' ' + o.boletimNumero : '') : 'Não'), lbl(CLASSES, o.classificacao)]; }); }
@@ -764,7 +764,11 @@
     if (S.userPop) { S.userPop = false; renderTopbar(); return; }
     if (S.sel) fechar();
   });
-  window.addEventListener('online', function () { S.sync = 'syncing'; renderSub(); if (S.abertoOffline) revalidar(); else carregar({ silencioso: true }); });
+  window.addEventListener('online', function () {
+    if (S.abertoOffline) { S.sync = 'syncing'; renderSub(); revalidar(); return; }
+    if (!S.usuario || S.tela !== 'painel') return; // tela de login: nada a carregar
+    S.sync = 'syncing'; renderSub(); carregar({ silencioso: true });
+  });
   // Painel aberto sem conexão (com o último perfil guardado): quando o sinal volta, confere login e perfil no servidor.
   // Também tenta a cada minuto, porque com sinal fraco o aparelho nem sempre avisa que a conexão voltou.
   var revalidando = false;

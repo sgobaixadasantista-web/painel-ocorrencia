@@ -89,7 +89,9 @@ async function carregar(){
  ef.elements.posto_id.replaceChildren(option('','Selecione'),...postos.map(p=>option(p.id,p.codigo)));
  $('postos-lista').replaceChildren(...postos.map(p=>{
   const tr=linha([p.codigo,p.trecho,(tipos.find(t=>t.id===p.tipo_posto_id)||{}).nome,p.status,p.login],
-   ()=>{Object.keys(p).forEach(k=>{if(pf.elements[k])pf.elements[k].value=p[k]??'';});pf.scrollIntoView({behavior:'smooth'});});
+   ()=>{Object.keys(p).forEach(k=>{if(pf.elements[k])pf.elements[k].value=p[k]??'';});
+    pf.elements.login.readOnly=true;pf.elements.login.title='O login não muda: a conta de acesso do app está ligada a ele.';
+    pf.scrollIntoView({behavior:'smooth'});});
   const c=document.createElement('td');c.dataset.acesso=p.login;c.textContent='Conferindo…';
   tr.insertBefore(c,tr.lastChild);return tr;}));
  carregarContas();
@@ -167,18 +169,26 @@ function ligarJanela(){
 
 function ligarFormularios(){
  const pf=$('postos-form'),ef=$('escalas-form');
- const limparPosto=()=>{pf.reset();pf.elements.id.value='';};
+ const limparPosto=()=>{pf.reset();pf.elements.id.value='';pf.elements.login.readOnly=false;pf.elements.login.title='';};
  const limparEscala=()=>{ef.reset();ef.elements.id.value='';ef.elements.vigente_desde.value=new Date().toLocaleDateString('en-CA');};
  $('postos-novo').onclick=limparPosto;$('escalas-nova').onclick=limparEscala;limparEscala();
  pf.onsubmit=async ev=>{
-  ev.preventDefault();const d=Object.fromEntries(new FormData(pf).entries()),id=d.id;delete d.id;
-  d.codigo=d.codigo.trim().toUpperCase();d.login=d.login.trim().toLowerCase();
-  const c=await client(),r=id?await c.from('equipes_postos').update(d).eq('id',id):await c.from('equipes_postos').insert(d);
-  if(r.error){msg('Não foi possível salvar o posto: '+r.error.message,true);return;}
-  limparPosto();try{await carregar();msg('Posto salvo. Se o posto ainda não tem acesso ao app, use "Criar acesso" na lista.');}catch(e){msg(e.message,true);}
+  ev.preventDefault();const botao=ev.submitter;if(botao?.disabled)return;if(botao)botao.disabled=true;
+  try{
+   const d=Object.fromEntries(new FormData(pf).entries()),id=d.id;delete d.id;
+   d.codigo=d.codigo.trim().toUpperCase();d.login=d.login.trim().toLowerCase();
+   if(id)delete d.login; // o login não muda depois de criado
+   const c=await client(),r=id?await c.from('equipes_postos').update(d).eq('id',id):await c.from('equipes_postos').insert(d);
+   if(r.error){msg('Não foi possível salvar o posto: '+r.error.message,true);return;}
+   limparPosto();try{await carregar();msg('Posto salvo. Se o posto ainda não tem acesso ao app, use "Criar acesso" na lista.');}catch(e){msg(e.message,true);}
+  }finally{if(botao)botao.disabled=false;}
  };
  ef.onsubmit=async ev=>{
-  ev.preventDefault();const d=Object.fromEntries(new FormData(ef).entries()),id=d.id;delete d.id;delete d.dia;
+  ev.preventDefault();const botao=ev.submitter;if(botao?.disabled)return;if(botao)botao.disabled=true;
+  try{await salvarEscala();}finally{if(botao)botao.disabled=false;}
+ };
+ const salvarEscala=async()=>{
+  const d=Object.fromEntries(new FormData(ef).entries()),id=d.id;delete d.id;delete d.dia;
   d.dias_semana=[...ef.querySelectorAll('[name=dia]:checked')].map(x=>Number(x.value));
   if(!d.dias_semana.length){msg('Selecione pelo menos um dia da semana.',true);return;}
   d.efetivo_esperado=Number(d.efetivo_esperado);d.tolerancia_min=Number(d.tolerancia_min);

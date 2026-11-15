@@ -12,7 +12,7 @@ let records=[],page=1;const PAGE_SIZE=15;let filtered=[];
 const el=id=>document.getElementById(id);
 const fmt=v=>{if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}).format(d)};
 function matchRows(){const q=el('vt-search').value.trim().toLowerCase(),team=el('vt-team').value,shift=el('vt-shift').value,day=el('vt-date').value;
- return records.filter(r=>(!q||[r.placa,r.equipe].join(' ').toLowerCase().includes(q))&&(!team||r.equipe===team)&&(!shift||r.turno_chave===shift)&&(!day||(r.registrado_em||'').slice(0,10)===day));
+ return records.filter(r=>(!q||[r.placa,r.equipe].join(' ').toLowerCase().includes(q))&&(!team||r.equipe===team)&&(!shift||r.turno_chave===shift)&&(!day||new Date(r.registrado_em||0).toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'})===day));
 }
 function draw(){
  filtered=matchRows();const pages=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));page=Math.min(page,pages);

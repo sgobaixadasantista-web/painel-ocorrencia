@@ -135,7 +135,11 @@
     document.getElementById('gps-search').oninput=e=>{query=e.target.value.trim().toLowerCase();draw()};
     document.getElementById('gps-filter').onchange=e=>{filter=e.target.value;draw()};
 
-    await refresh();timer=setInterval(refresh,20000);
+    await refresh();
+    // fechado durante a primeira carga: não cria o intervalo (ficaria rodando para sempre)
+    if(!document.getElementById('gps-overlay'))return;
+    if(timer)clearInterval(timer);
+    timer=setInterval(refresh,20000);
   }
   function close(){if(timer)clearInterval(timer);timer=null;closeMap();positions=[];filter='TODOS';query='';document.getElementById('gps-overlay')?.remove();}
   window.SecurityTrackingMap={show,close};

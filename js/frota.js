@@ -5,7 +5,7 @@ const DB = window.PAINEL_CONFIG || {};
 let client=null, vehicles=[], inspections=[], selected=null, busy=false, searchTerm='';
 const E=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const date=s=>s?new Date(s+'T12:00:00').toLocaleDateString('pt-BR'):'—';
-const today=()=>new Date().toISOString().slice(0,10);
+const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
 function root(){return document.getElementById('frota-overlay')}
 function message(s,error=false){const x=document.getElementById('frota-msg');if(x){x.textContent=s;x.style.color=error?'#b91c1c':'#17603b'}}
 async function db(){
@@ -22,7 +22,7 @@ function render(){
  '<div id="frota-form" class="f-section f-hidden"></div><div class="f-section"><label>Pesquisar veículo<input id="frota-search" placeholder="Digite ao menos 2 caracteres para pesquisar"></label><div class="f-scroll r-table-wrap"><table class="r-table ccs-standard-table"><thead><tr><th>Placa</th><th>Frota</th><th>Empresa</th><th>Modelo</th><th>Situação</th><th>Ação</th></tr></thead><tbody id="frota-rows"></tbody></table></div></div><div id="frota-detail" class="f-section f-hidden"></div></div>';
  document.getElementById('frota-close').onclick=close;
  document.getElementById('frota-refresh').onclick=refresh;
- document.getElementById('frota-newvehicle').onclick=vehicleForm;
+ document.getElementById('frota-newvehicle').onclick=()=>vehicleForm();
  document.getElementById('frota-search').value=searchTerm;document.getElementById('frota-search').oninput=()=>{searchTerm=document.getElementById('frota-search').value.trim();rows()};rows();
 }
 function rows(){const q=(document.getElementById('frota-search')?.value||'').trim().toUpperCase();if(q.length<2){document.getElementById('frota-rows').innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px">Digite pelo menos 2 caracteres para pesquisar veículos.</td></tr>';return;}document.getElementById('frota-rows').innerHTML=vehicles.filter(v=>[v.placa,v.prefixo_frota,v.empresa,v.modelo].join(' ').toUpperCase().includes(q)).map(v=>{const st=status(v);return '<tr><td>'+E(v.placa)+'</td><td>'+E(v.prefixo_frota||'—')+'</td><td>'+E(v.empresa)+'</td><td>'+E(v.modelo||'—')+'</td><td><span class="f-tag '+st[1]+'">'+st[0]+'</span></td><td><button type="button" data-vehicle="'+E(v.id)+'">Abrir</button> <button type="button" data-editvehicle="'+E(v.id)+'">Editar</button> <button type="button" data-deletevehicle="'+E(v.id)+'">Excluir</button></td></tr>'}).join('')||'<tr><td colspan="6">Nenhum veículo encontrado.</td></tr>';document.querySelectorAll('[data-vehicle]').forEach(b=>b.onclick=()=>detail(b.dataset.vehicle));document.querySelectorAll('[data-editvehicle]').forEach(b=>b.onclick=()=>vehicleForm(vehicles.find(v=>v.id===b.dataset.editvehicle)));document.querySelectorAll('[data-deletevehicle]').forEach(b=>b.onclick=()=>deleteVehicle(b.dataset.deletevehicle))}
@@ -68,7 +68,7 @@ async function photos(id){
  window.CCSPhotoGallery.open({title:'Checklist · '+(selected?.placa||''),images:items});area.innerHTML='';
  }catch(error){area.innerHTML='<p role="alert">Não foi possível abrir a galeria: '+E(error.message)+'</p>';}
 }
-async function refresh(){try{const c=await db();const auth=await c.auth.getUser();if(!auth.data?.user)throw Error('Entre no painel.');const [v,i]=await Promise.all([c.from('veiculos').select('*').order('placa'),c.from('veiculos_checklist').select('*').order('criado_em',{ascending:false})]);if(v.error)throw v.error;if(i.error)throw i.error;vehicles=v.data||[];inspections=i.data||[];render();message('Dados sincronizados com CCS360-V2.')}catch(e){if(root())message('Falha ao consultar frota: '+e.message,true)}}
+async function refresh(){try{const c=await db();const auth=await c.auth.getUser();if(!auth.data?.user)throw Error('Entre no painel.');const [v,i]=await Promise.all([c.from('veiculos').select('*').order('placa'),c.from('veiculos_checklist').select('*').order('criado_em',{ascending:false})]);if(v.error)throw v.error;if(i.error)throw i.error;vehicles=v.data||[];inspections=i.data||[];render();message('Dados sincronizados com CCS360-V2.')}catch(e){if(root()){if(!document.getElementById('frota-msg'))render();message('Falha ao consultar frota: '+e.message,true)}}}
 function close(){root()?.remove()}
 function open(){if(root())return;style();const r=document.createElement('div');r.id='frota-overlay';r.setAttribute('role','dialog');r.setAttribute('aria-modal','true');r.setAttribute('aria-label','Gestão de frota');document.body.appendChild(r);r.innerHTML='<div class="f-panel">Carregando frota...</div>';refresh()}
 document.addEventListener('click',e=>{if(e.target.closest('[data-act="frota"]')){e.preventDefault();open()}});

@@ -85,10 +85,13 @@ function navigate(id){
 function build(){
  const m=mode(),nav=document.getElementById('ccs-nav');
  if(!m){
+  // saiu da conta ou sessão expirou: módulos abertos não podem ficar por cima da tela de login
+  closeOverlay();window.CCSPhotoGallery?.close?.();
   nav?.remove();document.getElementById('ccs-nav-backdrop')?.remove();
   document.body.classList.remove('ccs-shell','ccs-sidebar-collapsed','ccs-sidebar-mobile-open');modeSeen='';return;
  }
  if(nav&&modeSeen===m){syncActive();return}
+ if(modeSeen&&modeSeen!==m)closeOverlay(); // trocou de visão (central/inteligência)
  nav?.remove();document.getElementById('ccs-nav-backdrop')?.remove();modeSeen=m;
  const backdrop=document.createElement('button');backdrop.id='ccs-nav-backdrop';backdrop.type='button';backdrop.setAttribute('aria-label','Fechar menu lateral');backdrop.onclick=closeMobile;document.body.appendChild(backdrop);
  const sidebar=document.createElement('aside');sidebar.id='ccs-nav';sidebar.setAttribute('aria-label','Navegação do Security CCS');
