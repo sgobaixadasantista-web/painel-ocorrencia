@@ -310,21 +310,36 @@
     var NI = 'NÃO INFORMADO', TIPIF = window.TIPIFICACAO_DEMO || { linhas: [], formularios: {} }, MINUTAS = window.MINUTAS_DEMO || [];
     function porId(id) { for (var i = 0; i < TIPIF.linhas.length; i++) if (TIPIF.linhas[i][0] === id) return TIPIF.linhas[i]; return null; }
     function TP(n, t, st) { for (var i = 0; i < TIPIF.linhas.length; i++) { var l = TIPIF.linhas[i]; if (l[1] === n && l[2] === t && l[3] === st) return l[0]; } throw new Error('tipificação da demonstração não encontrada: ' + [n, t, st].join(' > ')); }
-    // Mesmas regras do banco (validar_dados_formulario), com as mesmas mensagens.
+    // Mesmas regras do banco (validar_dados_formulario, migrations 004 e 009), com as mesmas mensagens.
     function validarDados(campos, dados) {
       dados = dados || {}; var ok = {}, perm = campos.map(function (c) { return c.chave; });
       Object.keys(dados).forEach(function (k) { if (perm.indexOf(k) < 0) falha('dados_invalidos', 'Campo que não existe neste formulário: ' + k.slice(0, 40)); });
+      var val = function (k) { return String(dados[k] == null ? '' : dados[k]).trim(); }, vis = {};
+      campos.forEach(function (c) { vis[c.chave] = true; });
+      for (var volta = 0, mudou = true; mudou && volta < 50; volta++) {
+        mudou = false;
+        campos.forEach(function (c) { var s = c.exibir_se; if (!s) return; var n = !!vis[s.campo] && (s.preenchido ? val(s.campo) !== '' : val(s.campo) === s.valor); if (n !== vis[c.chave]) { vis[c.chave] = n; mudou = true; } });
+      }
       campos.forEach(function (c) {
-        var t = String(dados[c.chave] == null ? '' : dados[c.chave]).trim();
+        var t = val(c.chave);
+        if (!vis[c.chave]) { if (t) falha('dados_invalidos', c.rotulo + ': este campo não se aplica com as respostas dadas.'); return; }
         if (!t) { if (c.obrigatorio) falha('dados_incompletos', 'Preencha o campo: ' + c.rotulo + '.'); return; }
         var r = c.rotulo;
         if (c.tipo === 'numero' && !/^\d{1,9}$/.test(t)) falha('dados_invalidos', r + ': informe só números.');
+        else if (c.tipo === 'decimal' && !/^\d{1,9}([.,]\d{1,3})?$/.test(t)) falha('dados_invalidos', r + ': informe um número (até 3 casas decimais).');
+        else if (c.tipo === 'duracao' && !/^\d{1,3}:[0-5]\d$/.test(t)) falha('dados_invalidos', r + ': use horas e minutos, ex. 01:52.');
+        else if (c.tipo === 'data_hora' && !/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/.test(t)) falha('dados_invalidos', r + ': informe data e hora.');
         else if (c.tipo === 'km' && !/^\d{1,4}\+\d{3}$/.test(t)) falha('dados_invalidos', r + ': use o formato 115+500.');
         else if (c.tipo === 'hora' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) falha('dados_invalidos', r + ': use o formato HH:MM.');
         else if (c.tipo === 'sim_nao' && ['sim', 'nao'].indexOf(t) < 0) falha('dados_invalidos', r + ': escolha Sim ou Não.');
         else if (c.tipo === 'select' && (c.opcoes || []).indexOf(t) < 0) falha('dados_invalidos', r + ': escolha uma das opções da lista.');
         else if ((c.tipo === 'texto' || c.tipo === 'textarea') && t.length > (c.max || (c.tipo === 'texto' ? 200 : 2000))) falha('dados_invalidos', r + ': texto longo demais.');
         ok[c.chave] = t;
+      });
+      campos.forEach(function (c) {
+        var ref = c.nao_antes_de; if (!ref || !ok[c.chave] || !ok[ref] || ok[c.chave] >= ok[ref]) return;
+        var rc = campos.filter(function (x) { return x.chave === ref; })[0];
+        falha('dados_invalidos', c.rotulo + ': não pode ser anterior a ' + (rc ? rc.rotulo : ref) + '.');
       });
       return ok;
     }
@@ -389,7 +404,7 @@
     var c5 = caso('Passagem em nível, km 22+100', 'Locomotiva parada foi abordada por homens armados e teve combustível retirado dos tanques. Maquinista sem ferimentos.', 8, TP('criminal', 'ROUBO', 'COMBUSTÍVEL'), 'solicitacao',
       { status: 'em_andamento', boletimExiste: true, boletimNumero: 'BO 457/2026', analiseMesa: 'Polícia acionada. Via liberada em 40 min.' }, { km: '22+100', empresa: 'RUMO', prefixo: 'T55', locomotiva: '9001', ativo_afetado: 'combustível diesel' });
     analises.push({ ocorrenciaId: c5.id, texto: 'Boletim registrado pelo condutor. Aguardando laudo da perícia.', em: agora - 6 * H, autor: 'Operador Central' });
-    caso('ZSD-Santa Adélia', 'Ataque a equipe de segurança com pedras durante ronda. Dois vigilantes com escoriações.', 20, TP('criminal', 'ATAQUE ÀS EQUIPES DE SEGURANÇA', 'AGRESSÃO'), 'flagrante', {}, { km: '210+000', vitimas: '2', lesao: 'LESÃO LEVE' });
+    caso('ZSD-Santa Adélia', 'Ataque a equipe de segurança com pedras durante ronda. Dois vigilantes com escoriações.', 20, TP('criminal', 'ATAQUE', 'AGRESSÃO'), 'flagrante', {}, { km: '210+000', vitimas: '2', lesao: 'LESÃO LEVE' });
     var c8 = caso('Trecho 3, km 120+000', 'Porta de abrigo de equipamentos arrombada. Itens não conferidos.', 120, TP('criminal', 'DANO', 'DEPREDAÇÃO'), 'denuncia',
       { status: 'concluido', boletimExiste: false, classificacao: 'social', classificadoEm: agora - 100 * H, concluidoEm: agora - 99 * H }, { km: '120+000' });
     analises.push({ ocorrenciaId: c8.id, texto: 'Nada subtraído. Fechadura trocada.', em: agora - 110 * H, autor: 'Operador Central' });

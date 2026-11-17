@@ -29,8 +29,10 @@ supabase/migrations/
   003_campo.sql                 registro sem sinal (horário real, sem duplicar), GPS, contas novas inativas
   004_tipificacao.sql           natureza > tipo > subtipo (156 combinações), formulários por combinação, triagem única
   005_agentes_ia.sql            3 agentes de IA e 7 minutas do Rumo - SLA (AINDA NÃO ESTÁ NO REPOSITÓRIO; veja docs/SQL-FALTANTE.md)
+  009_formularios_condicionais.sql   classificação: campos condicionais, data + hora, duração (THP) e decimal
 supabase/testes/testar_004.mjs  teste da 004 em Postgres na memória (banco novo e banco como o de produção)
-supabase/dados/                 planilha de tipificação e configuração dos agentes (fonte dos dados iniciais)
+supabase/testes/testar_009.mjs  teste da 009 e da carga da classificação (supabase/atualizar_tipificacao.sql)
+supabase/dados/                 base de classificação (JSON) e IDs fixos da tipificação
 supabase/atualizar_*.sql        reaplicam a planilha e os agentes sem apagar o que você ajustou
 tools/                          gerar_tipificacao.py e gerar_agentes.py (geram os SQL e os dados da demonstração)
 js/tipificacao-demo.js minutas-demo.js   dados só do modo demonstração (no modo normal vêm do banco)supabase/functions/analisar-ocorrencia/   função segura que chama a IA (a chave fica só no servidor)
@@ -79,16 +81,20 @@ Sem preencher o passo 5, o painel abre em **modo demonstração**: dados fictíc
 
 **Limites a conhecer:** a fila fica no aparelho e no navegador usado; limpar os dados do navegador apaga o que ainda não foi enviado. Em navegador sem armazenamento local (alguns modos anônimos), o painel avisa para não fechar a página. O app só envia enquanto está aberto (não há envio em segundo plano com a tela bloqueada). O app pede ao navegador que não apague a fila quando faltar espaço. O Chrome do app instalado costuma aceitar; outros navegadores, principalmente o Safari do iPhone, podem não garantir.
 
-## Tipificação e formulários
+## Tipificação e formulários (classificação de ocorrência)
 
-Na triagem, a central escolhe **Natureza ➜ Tipo ➜ Subtipo** (156 combinações, vindas da planilha da Rumo) e cada combinação **abre o formulário de referência** com os campos daquele caso.
+Na triagem, a central escolhe **Natureza ➜ Tipo ➜ Subtipo** e cada combinação **abre o formulário do seu subtipo**. A lista oficial é a base de classificação `supabase/dados/classificacao-ocorrencia.json`: **148 combinações, 86 subtipos, 86 formulários** (um por subtipo, com os campos do formulário de origem).
 
-- **9 formulários:** composição, via, apreensão, pessoas, acidente, obstrução, manutenção, prevenção e básico. Cada combinação aponta para um deles (tabela `tipificacao`, coluna `formulario`).
-- **Campos obrigatórios:** só o km (e, na apreensão, o material localizado). O resto é opcional e fica recolhido por grupo (composição, local, estatística).
-- **Formato dos campos:** km sempre como `115+500` (a tela converte `115,500`), horas como `HH:MM`, quantidade de material **só como número de recipientes**, sem peso nem litros.
+- **Cabeçalho comum** a todos os formulários: empresa (malha: RUMO MALHA PAULISTA / NORTE), trecho, sigla SB (lista de `aux_siglas`, que preenche o trecho), cidade, UF e km (obrigatório, `115+500`).
+- **Campos condicionais:** o formulário se expande conforme as respostas (ex.: "GEROU ALARME RX? = SIM" abre os campos do alarme). Campo escondido não é obrigatório e o banco **recusa** resposta para campo que não estava na tela.
+- **Horários** com data + hora (emergência, chegadas das equipes de segurança, manutenção e recolha, término da manutenção, gabarito liberado e liberação para a circulação). Nenhum pode ser anterior ao horário da emergência.
+- **THP:** duração digitada em `hh:mm` (ex.: `01:52`; pode passar de 24 h).
+- **Campo "TIPO DE …"** já vem preenchido com o próprio subtipo quando a opção existe.
 - **Natureza criminal** cria a ocorrência para a inteligência; **mecânica, social e natural** são finalizadas pela central, com observação. Nos dois casos ficam gravados a tipificação e os dados do formulário.
-- **Para ajustar:** *Table Editor* > `formularios` (campos, em JSON) e `tipificacao` (qual formulário cada combinação abre). Cada mudança nos campos sobe a versão e registra quem mudou. Se a planilha da Rumo mudar, gere o SQL de novo com `python3 tools/gerar_tipificacao.py planilha.xlsx` e rode `supabase/atualizar_tipificacao.sql`: combinações que saírem da planilha ficam inativas, sem quebrar registros antigos.
-- A triagem passa por **uma única função do banco** (`triar_evento`), que valida o formulário. Não existe caminho para pular os campos obrigatórios.
+- **Para ajustar:** edite a base (`classificacao-ocorrencia.json`), gere o SQL com `python tools/gerar_tipificacao.py` e rode `supabase/atualizar_tipificacao.sql`. Os formulários gerados (código `CL_...`) são sobrescritos a cada geração, então **não os edite no Table Editor**. Os IDs ficam fixos em `supabase/dados/tipificacao-ids.json`: combinação que já existia mantém o ID; a que sai da base fica inativa, sem quebrar registros antigos. Os 9 formulários antigos (composição, via, …) continuam no banco para abrir os registros antigos.
+- **Formato de um campo** (`formularios.campos`): `{chave, rotulo, tipo, obrigatorio, grupo, ajuda?, opcoes?, max?, padrao?, exibir_se?, nao_antes_de?}`. Tipos: `texto`, `textarea`, `numero`, `decimal`, `km`, `hora`, `data_hora`, `duracao`, `select`, `sim_nao`.
+- A triagem passa por **uma única função do banco** (`triar_evento`), que valida o formulário (`validar_dados_formulario`, migration 009). Não existe caminho para pular os campos obrigatórios.
+- **Implantação:** rode `009_formularios_condicionais.sql` e, **depois**, `supabase/atualizar_tipificacao.sql` (os dois param com aviso se a ordem estiver errada). Teste: `node supabase/testes/testar_009.mjs <projeto>/supabase` (com `@electric-sql/pglite@0.2.17` instalado numa pasta fora do projeto).
 
 ## Como a IA funciona (3 agentes em cadeia)
 

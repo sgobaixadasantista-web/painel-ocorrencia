@@ -63,7 +63,11 @@
   function carregarTipif() { return D.tipificacao().then(function (t) { S.tipif = indexarTipif(t); }); }
   function tipifTxt(nat, tipo, sub) { return [lbl(NATUREZAS, nat).toUpperCase(), tipo, sub].filter(Boolean).join(' › '); }
   function camposDe(id) { var l = S.tipif.porId[id], f = l && S.tipif.formularios[l.formulario]; return f ? f.campos : []; }
-  function valorDado(c, v) { return c.tipo === 'sim_nao' ? (v === 'sim' ? 'Sim' : 'Não') : v; }
+  function valorDado(c, v) {
+    if (c.tipo === 'sim_nao') return v === 'sim' ? 'Sim' : 'Não';
+    var m = c.tipo === 'data_hora' && /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})/.exec(v || ''); if (m) return m[3] + '/' + m[2] + '/' + m[1] + ' ' + m[4];
+    return v;
+  }
   // Dados que a central preencheu no formulário da combinação (rótulos vêm do próprio formulário)
   function dadosHtml(tipificacaoId, dados) {
     var cs = camposDe(tipificacaoId), rot = {}; cs.forEach(function (c) { rot[c.chave] = c; });
@@ -408,14 +412,43 @@
     var id = 'f-' + String(c.chave).replace(/[^A-Za-z0-9_-]/g, '_'), req = c.obrigatorio ? '<span class="r-req" aria-hidden="true">*</span>' : '', at = ' id="' + id + '" data-k="' + esc(c.chave) + '" data-t="' + esc(c.tipo) + '"', ctrl;
     if (c.chave === 'sb') ctrl = '<select class="r-input"' + at + '><option value="">Selecione a sigla (SB)</option>' + (S.tipif.siglas || []).map(function (s) { return '<option value="' + esc(s.sigla) + '">' + esc(s.sigla) + '</option>'; }).join('') + '</select>';
     else if (c.tipo === 'textarea') ctrl = '<textarea class="r-input"' + at + ' maxlength="' + (Number(c.max) || 2000) + '"></textarea>';
-    else if (c.tipo === 'select') ctrl = '<select class="r-input"' + at + '><option value="">Selecione</option>' + (c.opcoes || []).map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '</select>';
+    else if (c.tipo === 'select') ctrl = '<select class="r-input"' + at + '><option value="">Selecione</option>' + (c.opcoes || []).map(function (o) { return '<option' + (c.padrao != null && o === String(c.padrao) ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
     else if (c.tipo === 'sim_nao') ctrl = '<select class="r-input"' + at + '><option value="">Selecione</option><option value="sim">Sim</option><option value="nao">Não</option></select>';
     else if (c.tipo === 'hora') ctrl = '<input class="r-input"' + at + ' type="time">';
+    else if (c.tipo === 'data_hora') ctrl = '<input class="r-input"' + at + ' type="datetime-local">';
+    else if (c.tipo === 'duracao') ctrl = '<input class="r-input"' + at + ' type="text" inputmode="numeric" placeholder="hh:mm" maxlength="6" autocomplete="off">';
     else if (c.tipo === 'numero') ctrl = '<input class="r-input"' + at + ' type="text" inputmode="numeric" maxlength="9" autocomplete="off">';
+    else if (c.tipo === 'decimal') ctrl = '<input class="r-input"' + at + ' type="text" inputmode="decimal" maxlength="13" autocomplete="off">';
     else if (c.tipo === 'km') ctrl = '<input class="r-input"' + at + ' type="text" placeholder="115+500" maxlength="9" autocomplete="off">';
     else ctrl = '<input class="r-input"' + at + ' type="text" maxlength="' + (Number(c.max) || 200) + '" autocomplete="off">';
-    return '<div class="r-field"><label class="r-label" for="' + id + '">' + esc(c.rotulo) + req + '</label>' + ctrl + (c.ajuda ? '<span class="r-hint">' + esc(c.ajuda) + '</span>' : '') + '<div class="r-err" id="er-' + id + '" hidden></div></div>';
+    return '<div class="r-field" data-campo="' + esc(c.chave) + '"><label class="r-label" for="' + id + '">' + esc(c.rotulo) + req + '</label>' + ctrl + (c.ajuda ? '<span class="r-hint">' + esc(c.ajuda) + '</span>' : '') + '<div class="r-err" id="er-' + id + '" hidden></div></div>';
   }
+  /* Campos condicionais ("exibir_se"): a mesma regra da validação no banco (migration 009).
+     Um campo só aparece se o campo que o controla também aparece e tem o valor esperado (ou está preenchido). */
+  function valorRef(k) { var el = $('f-' + k); return el ? String(el.value || '').trim() : ''; }
+  function visiveisRef(campos, valor) {
+    var vis = {}; campos.forEach(function (c) { vis[c.chave] = true; });
+    for (var volta = 0, mudou = true; mudou && volta < 50; volta++) {
+      mudou = false;
+      campos.forEach(function (c) {
+        var s = c.exibir_se; if (!s) return;
+        var v = valor(s.campo), novo = !!vis[s.campo] && (s.preenchido ? v !== '' : v === s.valor);
+        if (novo !== vis[c.chave]) { vis[c.chave] = novo; mudou = true; }
+      });
+    }
+    return vis;
+  }
+  function aplicarVisibilidade() {
+    var l = triLinha(), fm = l && S.tipif.formularios[l.formulario]; if (!fm) return;
+    var vis = visiveisRef(fm.campos, valorRef);
+    fm.campos.forEach(function (c) {
+      var w = document.querySelector('#tri-dyn [data-campo="' + c.chave + '"]'); if (!w || w.hidden === !vis[c.chave]) return;
+      w.hidden = !vis[c.chave]; if (!vis[c.chave]) erroCampo('er-f-' + c.chave, '', 'f-' + c.chave);
+    });
+    // grupo com todos os campos escondidos some da tela
+    document.querySelectorAll('#tri-dyn .ref-grupo').forEach(function (g) { g.hidden = !g.querySelector('.r-field:not([hidden])'); });
+  }
+  function mascaraDuracao(v) { var d = String(v).replace(/\D/g, '').slice(0, 5); return d.length <= 2 ? d : d.slice(0, -2) + ':' + d.slice(-2); }
   function aoEscolherSubtipo() {
     var l = triLinha(), box = $('tri-dyn'); syncTriagem(); if (!l) { box.innerHTML = ''; return; }
     var fm = S.tipif.formularios[l.formulario]; if (!fm) { box.innerHTML = '<p class="aviso">Esta combinação não tem formulário ativo.</p>'; return; }
@@ -430,10 +463,14 @@
         : '<details class="ref-grupo" data-g="' + esc(g) + '"><summary>' + esc(g) + ' <span class="r-hint">(' + cs.length + ' campos, opcionais)</span></summary>' + corpo + '</details>';
     });
     box.innerHTML = h + '</div>';
+    aplicarVisibilidade();
   }
   function validarCampoRef(c, t) {
     var r = c.rotulo; if (!t) return c.obrigatorio ? 'Preencha o campo: ' + r + '.' : '';
     if (c.tipo === 'numero' && !/^\d{1,9}$/.test(t)) return r + ': informe só números.';
+    if (c.tipo === 'decimal' && !/^\d{1,9}([.,]\d{1,3})?$/.test(t)) return r + ': informe um número (até 3 casas decimais).';
+    if (c.tipo === 'duracao' && !/^\d{1,3}:[0-5]\d$/.test(t)) return r + ': use horas e minutos, ex. 01:52.';
+    if (c.tipo === 'data_hora' && !/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/.test(t)) return r + ': informe data e hora.';
     if (c.tipo === 'km' && !/^\d{1,4}\+\d{3}$/.test(t)) return r + ': use o formato 115+500.';
     if (c.tipo === 'hora' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) return r + ': use o formato HH:MM.';
     if (c.tipo === 'select' && (c.opcoes || []).indexOf(t) < 0) return r + ': escolha uma das opções da lista.';
@@ -441,11 +478,18 @@
     return '';
   }
   function coletarForm(l) {
-    var fm = S.tipif.formularios[l.formulario], dados = {}, bad = false;
+    var fm = S.tipif.formularios[l.formulario], dados = {}, bad = false, vis = visiveisRef(fm.campos, valorRef);
+    function marcar(c, m) { erroCampo('er-f-' + c.chave, m, 'f-' + c.chave); if (m) { bad = true; var el = $('f-' + c.chave), d = el && el.closest('details'); if (d) d.open = true; } }
     fm.campos.forEach(function (c) {
-      var el = $('f-' + c.chave), v = el ? String(el.value || '').trim() : '', m = validarCampoRef(c, v);
-      erroCampo('er-f-' + c.chave, m, 'f-' + c.chave);
-      if (m) { bad = true; var d = el && el.closest('details'); if (d) d.open = true; } else if (v) dados[c.chave] = v;
+      if (!vis[c.chave]) { erroCampo('er-f-' + c.chave, '', 'f-' + c.chave); return; }   // escondido: não vai para o banco
+      var v = valorRef(c.chave), m = validarCampoRef(c, v);
+      marcar(c, m); if (!m && v) dados[c.chave] = v;
+    });
+    // horários que não podem ser anteriores a outro (ex.: chegada da equipe x emergência)
+    fm.campos.forEach(function (c) {
+      var ref = c.nao_antes_de; if (!ref || !dados[c.chave] || !dados[ref] || dados[c.chave] >= dados[ref]) return;
+      var rc = fm.campos.filter(function (x) { return x.chave === ref; })[0];
+      marcar(c, c.rotulo + ': não pode ser anterior a ' + (rc ? rc.rotulo : ref) + '.'); delete dados[c.chave];
     });
     return { dados: dados, bad: bad };
   }
@@ -740,6 +784,7 @@
     else if (t.id === 'tri-sub') aoEscolherSubtipo();
     else if (t.id === 'f-sb') { var trecho = $('f-trecho'), sigla = (S.tipif.siglas || []).find(function (s) { return s.sigla === t.value; }); if (trecho) { trecho.value = sigla ? sigla.trecho_codigo : ''; trecho.dispatchEvent(new Event('input', { bubbles: true })); } }
     else if (t.id === 'bo-existe') { var f = $('fd-bo-num'); if (f) f.hidden = t.value !== 'sim'; }
+    if (t.closest && t.closest('#tri-dyn')) aplicarVisibilidade();
   });
   document.addEventListener('focusout', function (ev) {
     var t = ev.target; if (!t || t.getAttribute('data-t') !== 'km') return;
@@ -747,6 +792,9 @@
   });
   var _busca = null;
   document.addEventListener('input', function (ev) {
+    var dt = ev.target.getAttribute && ev.target.getAttribute('data-t');
+    if (dt === 'duracao') { var md = mascaraDuracao(ev.target.value); if (md !== ev.target.value) ev.target.value = md; }
+    if (dt && ev.target.closest('#tri-dyn')) aplicarVisibilidade();
     if (ev.target.id === 'busca') { clearTimeout(_busca); var v = ev.target.value; _busca = setTimeout(function () { S.busca = v.trim(); S.pagina = 1; carregar({ silencioso: true }); }, 350); }
   });
   document.addEventListener('submit', function (ev) {
