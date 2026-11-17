@@ -4,11 +4,11 @@
    Para forçar atualização do aplicativo em todos os aparelhos, troque o número em VERSAO.
    ATENÇÃO: todo arquivo novo carregado pelo index.html precisa entrar em ARQUIVOS (e VERSAO precisa subir),
    senão o app instalado abre quebrado sem internet. */
-var VERSAO = 'v10';
+var VERSAO = 'v11';
 var CACHE = 'security-rumo-' + VERSAO;
 var ARQUIVOS = ['./', 'index.html', 'manifest.webmanifest',
   'css/tokens.css', 'css/rumo.css', 'css/app.css', 'css/design-system.css', 'css/navigation.css', 'css/photo-gallery.css', 'css/modules.css',
-  'js/config.js', 'js/icons.js', 'js/tipificacao-demo.js', 'js/minutas-demo.js', 'js/data.js', 'js/fila.js', 'js/campo.js', 'js/app.js',
+  'js/config.js', 'js/icons.js', 'js/tipificacao-demo.js', 'js/malha-demo.js', 'js/minutas-demo.js', 'js/data.js', 'js/fila.js', 'js/campo.js', 'js/app.js',
   'js/photo-gallery.js', 'js/rastreamento.js', 'js/efetivo.js', 'js/veiculos.js', 'js/frota.js', 'js/colaboradores.js', 'js/postos.js', 'js/navigation.js',
   'js/vendor/supabase-2.45.4.js',
   'assets/logo-fundo-claro.png', 'assets/logo-fundo-escuro.png', 'assets/icon-192.png', 'assets/icon-512.png',

@@ -48,11 +48,12 @@ def campo(chave, rotulo, tipo, obrigatorio=False, grupo='Local da ocorrência', 
 # Cabeçalho comum a todos os formulários. As chaves (km, sb, trecho, cidade, uf) são as mesmas que a análise de IA já lê.
 CABECALHO = [
     campo('malha', 'Empresa (malha)', 'select', True, opcoes=MALHAS),
-    campo('trecho', 'Trecho', 'texto', False, ajuda='Exemplo: TRECHO 0.', max=20),
-    campo('sb', 'Pátio / seção de bloqueio (SB)', 'texto', False, ajuda='Somente a sigla. Exemplo: ZZV.', max=10),
-    campo('cidade', 'Cidade', 'texto', False, max=80),
+    # Na tela, trecho > SB > km vêm da malha ferroviária (tabela malha_pontos, migration 010) e o km preenche cidade e UF.
+    campo('trecho', 'Trecho', 'texto', False, max=20),
+    campo('sb', 'Pátio / seção de bloqueio (SB)', 'texto', False, max=10),
+    campo('km', 'Quilômetro (km)', 'km', True, ajuda='Formato 115+500. Escolha na lista da sigla.'),
+    campo('cidade', 'Cidade', 'texto', False, ajuda='Preenchida pelo km escolhido.', max=80),
     campo('uf', 'UF', 'select', False, opcoes=UFS),
-    campo('km', 'Quilômetro (km)', 'km', True, ajuda='Formato 115+500, sempre com sinal de mais.'),
 ]
 # Campos da base que já têm chave conhecida pelo painel e pela IA
 CHAVE_CONHECIDA = {'COMPOSICAO': 'composicao', 'VAGOES': 'vagoes', 'LOCOMOTIVA LIDER': 'locomotiva', 'EMPRESA': 'empresa', 'THP': 'thp_total'}

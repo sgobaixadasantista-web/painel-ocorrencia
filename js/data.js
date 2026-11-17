@@ -178,6 +178,21 @@
         var fm = {}; f.forEach(function (x) { fm[x.codigo] = x; });
         return { linhas: t.filter(function (x) { return fm[x.formulario]; }), formularios: fm, siglas: siglas };
       },
+      // Malha ferroviária (migration 010): trechos e siglas para os seletores; marcos de km de uma sigla, com cidade e UF.
+      // Sem a tabela (migration não rodada) devolve lista vazia e a triagem volta às siglas de aux_siglas.
+      async malhaSiglas() {
+        var c = await lib(), r = await c.from('v_malha_siglas').select('trecho,sigla,km_min,km_max,cidades').order('trecho').order('sigla');
+        if (r.error) return [];
+        return r.data.map(function (x) { return { trecho: x.trecho, sigla: x.sigla, kmMin: x.km_min, kmMax: x.km_max, cidades: x.cidades || '' }; });
+      },
+      async malhaKms(trecho, sigla) {
+        var c = await lib(), todos = [], de = 0, LOTE = 1000;
+        for (;;) {   // o Supabase devolve no máximo 1000 linhas por consulta; uma sigla pode ter mais de 2.700 marcos
+          var r = ok(await c.from('malha_pontos').select('km_metros,km_texto,cidade,uf').eq('trecho', trecho).eq('sigla', sigla).order('km_metros').range(de, de + LOTE - 1));
+          todos = todos.concat(r); if (r.length < LOTE) break; de += LOTE;
+        }
+        return todos.map(function (x) { return { kmMetros: x.km_metros, km: x.km_texto, cidade: x.cidade || '', uf: x.uf || '' }; });
+      },
       async listarEventos(f) { return listar('v_fila_eventos', f, evento, ['local', 'descricao', 'numero_formatado', 'criado_por_nome']); },
       async listarOcorrencias(f) { return listar('v_fila_ocorrencias', f, ocorrencia, ['local', 'descricao', 'numero_formatado', 'tipo', 'subtipo', 'evento_numero_formatado']); },
       async detalheEvento(id) {
@@ -492,6 +507,17 @@
       entrar: function () { return lat({ logado: true, usuario: usuario }); },
       sair: function () { return lat(); },
       tipificacao: function () { return lat({ linhas: TIPIF.linhas.map(function (l) { return { id: l[0], natureza: l[1], tipo: l[2], subtipo: l[3], formulario: l[4] }; }), formularios: JSON.parse(JSON.stringify(TIPIF.formularios)) }); },
+      // malha de amostra (Baixada Santista) em js/malha-demo.js: [trecho, sigla, km_metros, cidade, uf]
+      malhaSiglas: function () {
+        var g = {}; (window.MALHA_DEMO || []).forEach(function (p) { var k = p[0] + '|' + p[1], x = g[k] || (g[k] = { trecho: p[0], sigla: p[1], kmMin: p[2], kmMax: p[2], cid: {} });
+          x.kmMin = Math.min(x.kmMin, p[2]); x.kmMax = Math.max(x.kmMax, p[2]); x.cid[p[3] + '/' + p[4]] = 1; });
+        return lat(Object.keys(g).sort().map(function (k) { var x = g[k]; return { trecho: x.trecho, sigla: x.sigla, kmMin: x.kmMin, kmMax: x.kmMax, cidades: Object.keys(x.cid).join(', ') }; }));
+      },
+      malhaKms: function (trecho, sigla) {
+        var f = function (m) { return Math.floor(m / 1000) + '+' + ('00' + (m % 1000)).slice(-3); };
+        return lat((window.MALHA_DEMO || []).filter(function (p) { return p[0] === trecho && p[1] === sigla; }).sort(function (a, b) { return a[2] - b[2]; })
+          .map(function (p) { return { kmMetros: p[2], km: f(p[2]), cidade: p[3], uf: p[4] }; }));
+      },
       listarEventos: function (f) { var base = f.somenteMeus ? eventos.filter(function (e) { return e.criadoPorNome === usuario.nome; }) : eventos; return lat(pagina(filtrar(base, f, ['local', 'descricao', 'numero', 'criadoPorNome'], 'concluido'), f, ev)); },
       listarOcorrencias: function (f) { return lat(pagina(filtrar(ocorrencias, f, ['local', 'descricao', 'numero', 'tipo', 'subtipo', 'eventoNumero'], 'concluido'), f, oc)); },
       detalheEvento: function (id) {

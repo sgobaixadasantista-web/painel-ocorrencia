@@ -60,7 +60,11 @@
   }
   function tempoTxt(x) { return (x.status === 'concluido' ? 'em ' : '') + fmtDur(decorrido(x)); }
   function indexarTipif(t) { var p = {}; t.linhas.forEach(function (l) { p[l.id] = l; }); return { linhas: t.linhas, formularios: t.formularios, porId: p, siglas: t.siglas || [] }; }
-  function carregarTipif() { return D.tipificacao().then(function (t) { S.tipif = indexarTipif(t); }); }
+  function carregarTipif() {
+    // a malha é opcional: sem ela, trecho e SB voltam ao preenchimento por aux_siglas
+    D.malhaSiglas().then(function (s) { S.malha = { siglas: s || [], kms: {} }; }).catch(function () { S.malha = { siglas: [], kms: {} }; });
+    return D.tipificacao().then(function (t) { S.tipif = indexarTipif(t); });
+  }
   function tipifTxt(nat, tipo, sub) { return [lbl(NATUREZAS, nat).toUpperCase(), tipo, sub].filter(Boolean).join(' › '); }
   function camposDe(id) { var l = S.tipif.porId[id], f = l && S.tipif.formularios[l.formulario]; return f ? f.campos : []; }
   function valorDado(c, v) {
@@ -407,10 +411,44 @@
     syncTriagem();
     if (subs.length === 1) { st.value = subs[0]; aoEscolherSubtipo(); }
   }
+  /* ----- Malha ferroviária (tabela malha_pontos): Trecho > Sigla (SB) > km > cidade e UF ----- */
+  function temMalha() { return !!(S.malha && S.malha.siglas.length); }
+  function malhaTrechos() { return unicos(S.malha.siglas.map(function (x) { return x.trecho; })).sort(function (a, b) { return a.localeCompare(b, 'pt-BR', { numeric: true }); }); }
+  function definir(id, v) { var el = $(id); if (el && el.value !== v) { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); } }
+  function aoEscolherTrechoMalha() {
+    var tr = $('f-trecho').value, sb = $('f-sb'), km = $('f-km'); if (!sb || !km) return;
+    var ss = S.malha.siglas.filter(function (x) { return x.trecho === tr; });
+    sb.disabled = !ss.length;
+    sb.innerHTML = '<option value="">' + (tr ? 'Selecione a sigla (' + ss.length + ')' : 'Escolha o trecho primeiro') + '</option>' +
+      ss.map(function (x) { return '<option value="' + esc(x.sigla) + '">' + esc(x.sigla + (x.cidades ? ' — ' + x.cidades : '')) + '</option>'; }).join('');
+    km.disabled = true; km.innerHTML = '<option value="">Escolha a sigla primeiro</option>';
+    definir('f-cidade', ''); definir('f-uf', '');
+  }
+  function aoEscolherSiglaMalha() {
+    var tr = $('f-trecho').value, sg = $('f-sb').value, km = $('f-km'), chave = tr + '|' + sg; if (!km) return;
+    definir('f-cidade', ''); definir('f-uf', '');
+    if (!sg) { km.disabled = true; km.innerHTML = '<option value="">Escolha a sigla primeiro</option>'; return; }
+    km.disabled = true; km.innerHTML = '<option value="">Carregando os km…</option>';
+    var p = S.malha.kms[chave] ? Promise.resolve(S.malha.kms[chave]) : D.malhaKms(tr, sg).then(function (l) { S.malha.kms[chave] = l; return l; });
+    p.then(function (l) {
+      if ($('f-sb') !== null && ($('f-trecho').value + '|' + $('f-sb').value) !== chave) return;   // trocou de sigla enquanto carregava
+      km.disabled = !l.length;
+      km.innerHTML = '<option value="">Selecione o km (' + l.length + ')</option>' + l.map(function (x) { return '<option value="' + esc(x.km) + '">' + esc(x.km + (x.cidade ? ' · ' + x.cidade + '/' + x.uf : '')) + '</option>'; }).join('');
+    }).catch(function (e) { km.innerHTML = '<option value="">Não foi possível carregar os km</option>'; toast('warning', 'Malha indisponível', e.message); });
+  }
+  function aoEscolherKmMalha() {
+    var l = S.malha.kms[$('f-trecho').value + '|' + $('f-sb').value] || [], v = $('f-km').value, x = l.filter(function (p) { return p.km === v; })[0];
+    definir('f-cidade', x ? x.cidade : ''); definir('f-uf', x ? x.uf : '');
+  }
   /* ----- Formulário de referência da combinação (definido na tabela "formularios") ----- */
   function campoRef(c) {
     var id = 'f-' + String(c.chave).replace(/[^A-Za-z0-9_-]/g, '_'), req = c.obrigatorio ? '<span class="r-req" aria-hidden="true">*</span>' : '', at = ' id="' + id + '" data-k="' + esc(c.chave) + '" data-t="' + esc(c.tipo) + '"', ctrl;
-    if (c.chave === 'sb') ctrl = '<select class="r-input"' + at + '><option value="">Selecione a sigla (SB)</option>' + (S.tipif.siglas || []).map(function (s) { return '<option value="' + esc(s.sigla) + '">' + esc(s.sigla) + '</option>'; }).join('') + '</select>';
+    var malha = temMalha();
+    // Local pela malha ferroviária: Trecho > Sigla (SB) > km; o km escolhido preenche cidade e UF
+    if (malha && c.chave === 'trecho') ctrl = '<select class="r-input"' + at + '><option value="">Selecione o trecho</option>' + malhaTrechos().map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('') + '</select>';
+    else if (malha && c.chave === 'sb') ctrl = '<select class="r-input"' + at + ' disabled><option value="">Escolha o trecho primeiro</option></select>';
+    else if (malha && c.chave === 'km') ctrl = '<select class="r-input"' + at + ' disabled><option value="">Escolha a sigla primeiro</option></select>';
+    else if (c.chave === 'sb') ctrl = '<select class="r-input"' + at + '><option value="">Selecione a sigla (SB)</option>' + (S.tipif.siglas || []).map(function (s) { return '<option value="' + esc(s.sigla) + '">' + esc(s.sigla) + '</option>'; }).join('') + '</select>';
     else if (c.tipo === 'textarea') ctrl = '<textarea class="r-input"' + at + ' maxlength="' + (Number(c.max) || 2000) + '"></textarea>';
     else if (c.tipo === 'select') ctrl = '<select class="r-input"' + at + '><option value="">Selecione</option>' + (c.opcoes || []).map(function (o) { return '<option' + (c.padrao != null && o === String(c.padrao) ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
     else if (c.tipo === 'sim_nao') ctrl = '<select class="r-input"' + at + '><option value="">Selecione</option><option value="sim">Sim</option><option value="nao">Não</option></select>';
@@ -782,6 +820,9 @@
     else if (t.name === 'nat') aoEscolherNatureza();
     else if (t.id === 'tri-tipo') aoEscolherTipo();
     else if (t.id === 'tri-sub') aoEscolherSubtipo();
+    else if (t.id === 'f-trecho' && temMalha()) aoEscolherTrechoMalha();
+    else if (t.id === 'f-sb' && temMalha()) aoEscolherSiglaMalha();
+    else if (t.id === 'f-km' && temMalha()) aoEscolherKmMalha();
     else if (t.id === 'f-sb') { var trecho = $('f-trecho'), sigla = (S.tipif.siglas || []).find(function (s) { return s.sigla === t.value; }); if (trecho) { trecho.value = sigla ? sigla.trecho_codigo : ''; trecho.dispatchEvent(new Event('input', { bubbles: true })); } }
     else if (t.id === 'bo-existe') { var f = $('fd-bo-num'); if (f) f.hidden = t.value !== 'sim'; }
     if (t.closest && t.closest('#tri-dyn')) aplicarVisibilidade();
