@@ -29,7 +29,7 @@ supabase/migrations/
   003_campo.sql                 registro sem sinal (horário real, sem duplicar), GPS, contas novas inativas
   004_tipificacao.sql           natureza > tipo > subtipo (156 combinações), formulários por combinação, triagem única
   005_agentes_ia.sql            3 agentes de IA e 7 minutas do Rumo - SLA (AINDA NÃO ESTÁ NO REPOSITÓRIO; veja docs/SQL-FALTANTE.md)
-  006 a 014                     app de campo: ficam no repositório security (mesmo banco, numeração única)
+  006 a 014 e 017               ficam no repositório security (mesmo banco, numeração única); a 017 tira a anon de todas as tabelas
   015_formularios_condicionais.sql   classificação: campos condicionais, data + hora, duração (THP) e decimal
   016_malha_pontos.sql          malha ferroviária (trecho > sigla > km) com cidade e UF, para o local da triagem
 supabase/testes/testar_004.mjs  teste da 004 em Postgres na memória (banco novo e banco como o de produção)
