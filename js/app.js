@@ -621,7 +621,7 @@
       var titulos = { qualidade: 'Qualidade do registro', viabilidade: 'Viabilidade do boletim', tipificacao: 'Tipificação sugerida', minuta: 'Minuta sugerida', naoInformado: 'Informações não localizadas' };
       Object.keys(titulos).forEach(function (k) {
         var valor = r[k]; if (valor == null) return;
-        var rotulos = { nota: 'Nota', justificativa: 'Justificativa', status: 'Parecer', artigo: 'Artigo', fundamento: 'Fundamentação', texto: 'Texto', descricao: 'Descrição', observacao: 'Observação' };
+        var rotulos = { nota: 'Nota', justificativa: 'Justificativa', status: 'Parecer', artigo: 'Artigo', codigo: 'Código no catálogo de artigos', fundamento: 'Fundamentação', texto: 'Texto', descricao: 'Descrição', observacao: 'Observação' };
         var conteudo;
         if (Array.isArray(valor)) { conteudo = valor.length ? '<ul class="ia-lista">' + valor.map(function (item) { return '<li>' + esc(typeof item === 'string' ? item : JSON.stringify(item)) + '</li>'; }).join('') + '</ul>' : '<p>Nenhuma informação ausente.</p>'; } else if (valor && typeof valor === 'object') {
           conteudo = Object.keys(valor).map(function (campo) {

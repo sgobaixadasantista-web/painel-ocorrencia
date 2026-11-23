@@ -32,10 +32,14 @@ supabase/migrations/
   006 a 014 e 017               ficam no repositório security (mesmo banco, numeração única); a 017 tira a anon de todas as tabelas
   015_formularios_condicionais.sql   classificação: campos condicionais, data + hora, duração (THP) e decimal
   016_malha_pontos.sql          malha ferroviária (trecho > sigla > km) com cidade e UF, para o local da triagem
+  018_artigos_penais.sql        catálogo de artigos penais: a IA da inteligência só escolhe artigos dele
 supabase/testes/testar_004.mjs  teste da 004 em Postgres na memória (banco novo e banco como o de produção)
 supabase/testes/testar_015.mjs  teste da 015 e da carga da classificação (supabase/atualizar_tipificacao.sql)
 supabase/testes/testar_016.mjs  teste da 016 e da carga da malha (supabase/dados/malha_pontos.csv)
+supabase/testes/testar_018.mjs  teste da 018 e da carga do catálogo (supabase/atualizar_artigos.sql)
+supabase/testes/testar_analisar_ia.mjs   teste da função de IA com o catálogo (Supabase e OpenAI simulados)
 supabase/dados/                 base de classificação (JSON), IDs fixos da tipificação e malha_pontos.csv
+tools/gerar_artigos.py          gera supabase/atualizar_artigos.sql do catálogo (JSON ou planilha revisada)
 tools/gerar_malha.mjs           gera malha_pontos.csv (e js/malha-demo.js) da malha do app de campo + municípios do IBGE
 supabase/atualizar_*.sql        reaplicam a planilha e os agentes sem apagar o que você ajustou
 tools/                          gerar_tipificacao.py e gerar_agentes.py (geram os SQL e os dados da demonstração)
@@ -100,6 +104,18 @@ Na triagem, a central escolhe **Natureza ➜ Tipo ➜ Subtipo** e cada combinaç
 - **Formato de um campo** (`formularios.campos`): `{chave, rotulo, tipo, obrigatorio, grupo, ajuda?, opcoes?, max?, padrao?, exibir_se?, nao_antes_de?}`. Tipos: `texto`, `textarea`, `numero`, `decimal`, `km`, `hora`, `data_hora`, `duracao`, `select`, `sim_nao`.
 - A triagem passa por **uma única função do banco** (`triar_evento`), que valida o formulário (`validar_dados_formulario`, migration 015). Não existe caminho para pular os campos obrigatórios.
 - **Implantação:** rode `015_formularios_condicionais.sql` e, **depois**, `supabase/atualizar_tipificacao.sql` (os dois param com aviso se a ordem estiver errada). Para o local pela malha: `016_malha_pontos.sql` e a importação do CSV. Testes: `node supabase/testes/testar_015.mjs <projeto>/supabase` e `testar_016.mjs` (com `@electric-sql/pglite@0.2.17` instalado numa pasta fora do projeto).
+
+## Catálogo de artigos da IA (tipificação)
+
+A análise por IA da inteligência sugere a tipificação **escolhendo um artigo de um catálogo fechado**, e não de memória.
+
+- **Base:** `supabase/dados/artigos-penais.json`, com 26 artigos, vinda da planilha `artigos_rumo` revisada com o texto oficial do Planalto (consultado em 23/11/2026). Cada artigo tem código (ex.: `CP_155`, `L11343_33`), título, artigo, lei, **caput**, pena e uma observação para o jurídico.
+- **Como a IA usa:** a função `analisar-ocorrencia` manda à IA os artigos **ativos** (código, artigo e caput) e pede o **código** de um deles ou `NAO_APLICAVEL`. A resposta é conferida por código: se a IA indicar um artigo fora da lista, a análise é gravada com **"REVISAR MANUALMENTE"** na tipificação, sem usar o artigo inventado.
+- **Para mudar:** edite a planilha revisada (aba *Artigos*; `Ativo = NÃO` tira o artigo da lista sem apagar) e rode `python tools/gerar_artigos.py <planilha.xlsx>` (precisa de `openpyxl`), ou edite o JSON e rode `python tools/gerar_artigos.py`. Depois aplique `supabase/atualizar_artigos.sql`. Artigo que sai da base fica inativo.
+- **Implantação:** `018_artigos_penais.sql` e, **depois**, `supabase/atualizar_artigos.sql`; em seguida, publique a função de novo (`supabase functions deploy analisar-ocorrencia`). Sem a tabela, a função continua funcionando como antes (artigo em texto livre).
+- **Leitura:** só `inteligencia` e `admin`. Ninguém grava pelo navegador.
+- **Testes:** `testar_018.mjs` (PGlite) e `testar_analisar_ia.mjs` (`npm i esbuild@0.24.0` numa pasta fora do projeto).
+- A tipificação é **de uso interno** e é uma sugestão: o jurídico confere os textos do catálogo e quem registra o boletim confere a escolha.
 
 ## Como a IA funciona (3 agentes em cadeia)
 
