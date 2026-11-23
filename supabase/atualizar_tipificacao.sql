@@ -1,12 +1,12 @@
 -- GERADO por tools/gerar_tipificacao.py a partir de supabase/dados/classificacao-ocorrencia.json
--- (148 combinações, 86 formulários). Não edite à mão. Precisa das migrations 004 e 009.
+-- (148 combinações, 86 formulários). Não edite à mão. Precisa das migrations 004 e 015.
 
 do $$ begin
   if to_regclass('public.tipificacao') is null or to_regclass('public.formularios') is null then
-    raise exception 'Rode antes as migrations 004_tipificacao.sql e 009_formularios_condicionais.sql.';
+    raise exception 'Rode antes as migrations 004_tipificacao.sql e 015_formularios_condicionais.sql.';
   end if;
   if not exists (select 1 from pg_proc where proname = 'validar_dados_formulario' and prosrc like '%exibir_se%') then
-    raise exception 'Rode antes a migration 009_formularios_condicionais.sql.';
+    raise exception 'Rode antes a migration 015_formularios_condicionais.sql.';
   end if;
 end $$;
 

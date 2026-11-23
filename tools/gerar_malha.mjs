@@ -1,4 +1,4 @@
-// Gera supabase/dados/malha_pontos.csv (carga da tabela public.malha_pontos, migration 010) a partir da malha
+// Gera supabase/dados/malha_pontos.csv (carga da tabela public.malha_pontos, migration 016) a partir da malha
 // ferroviária do app de campo e das malhas municipais do IBGE: cada marco de km ganha cidade, UF e código IBGE.
 //
 // Uso (na raiz do painel):

@@ -15,7 +15,7 @@ Regras do SQL gerado (pode rodar de novo quando a base mudar, sem apagar nada):
   * os formulários gerados (código CL_...) são sobrescritos a cada geração: ajuste a base, não o Table Editor.
   * os formulários antigos (COMPOSICAO, VIA, ...) não são tocados; continuam abrindo os registros antigos.
 
-Formato de cada campo em formularios.campos (lido pelo painel e por validar_dados_formulario, migration 009):
+Formato de cada campo em formularios.campos (lido pelo painel e por validar_dados_formulario, migration 015):
   { chave, rotulo, tipo, obrigatorio, grupo, ajuda?, opcoes?, max?, padrao?, exibir_se?, nao_antes_de? }
   tipo: texto, textarea, numero, decimal, km, hora, data_hora, duracao, select, sim_nao
   exibir_se: { "campo": <chave>, "valor": <opção> }  ou  { "campo": <chave>, "preenchido": true }
@@ -48,7 +48,7 @@ def campo(chave, rotulo, tipo, obrigatorio=False, grupo='Local da ocorrência', 
 # Cabeçalho comum a todos os formulários. As chaves (km, sb, trecho, cidade, uf) são as mesmas que a análise de IA já lê.
 CABECALHO = [
     campo('malha', 'Empresa (malha)', 'select', True, opcoes=MALHAS),
-    # Na tela, trecho > SB > km vêm da malha ferroviária (tabela malha_pontos, migration 010) e o km preenche cidade e UF.
+    # Na tela, trecho > SB > km vêm da malha ferroviária (tabela malha_pontos, migration 016) e o km preenche cidade e UF.
     campo('trecho', 'Trecho', 'texto', False, max=20),
     campo('sb', 'Pátio / seção de bloqueio (SB)', 'texto', False, max=10),
     campo('km', 'Quilômetro (km)', 'km', True, ajuda='Formato 115+500. Escolha na lista da sigla.'),
@@ -140,13 +140,13 @@ def main():
     if len({f[0] for f in formularios}) != len(formularios): sys.exit('Código de formulário repetido')
 
     out = ['-- GERADO por tools/gerar_tipificacao.py a partir de supabase/dados/classificacao-ocorrencia.json',
-           '-- (%d combinações, %d formulários). Não edite à mão. Precisa das migrations 004 e 009.' % (len(linhas), len(formularios)), '',
+           '-- (%d combinações, %d formulários). Não edite à mão. Precisa das migrations 004 e 015.' % (len(linhas), len(formularios)), '',
            'do $$ begin',
            "  if to_regclass('public.tipificacao') is null or to_regclass('public.formularios') is null then",
-           "    raise exception 'Rode antes as migrations 004_tipificacao.sql e 009_formularios_condicionais.sql.';",
+           "    raise exception 'Rode antes as migrations 004_tipificacao.sql e 015_formularios_condicionais.sql.';",
            '  end if;',
            "  if not exists (select 1 from pg_proc where proname = 'validar_dados_formulario' and prosrc like '%exibir_se%') then",
-           "    raise exception 'Rode antes a migration 009_formularios_condicionais.sql.';",
+           "    raise exception 'Rode antes a migration 015_formularios_condicionais.sql.';",
            '  end if;',
            'end $$;', '']
     out.append('insert into public.formularios (codigo, nome, descricao, campos) values')

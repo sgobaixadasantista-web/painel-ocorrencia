@@ -1,7 +1,7 @@
-// Teste da 009 (formulários condicionais da classificação) e do supabase/atualizar_tipificacao.sql gerado,
+// Teste da 015 (formulários condicionais da classificação) e do supabase/atualizar_tipificacao.sql gerado,
 // num Postgres em memória (PGlite), partindo das migrations 001 a 004 (natureza em texto, como em produção).
 // Uso, numa pasta fora do projeto: npm i @electric-sql/pglite@0.2.17
-//   node <projeto>/supabase/testes/testar_009.mjs <projeto>/supabase
+//   node <projeto>/supabase/testes/testar_015.mjs <projeto>/supabase
 import { PGlite } from '@electric-sql/pglite';
 import fs from 'fs';
 const [, , raiz] = process.argv;
@@ -15,8 +15,8 @@ create schema storage; create table storage.buckets (id text primary key, name t
 create table storage.objects (id uuid default gen_random_uuid(), bucket_id text, name text); alter table storage.objects enable row level security;
 create function storage.foldername(name text) returns text[] language sql as $$ select string_to_array(name, '/') $$;`);
 for (const m of ['001_painel_ocorrencias.sql', '002_inteligencia.sql', '003_campo.sql', '004_tipificacao.sql']) await db.exec(ler('migrations/' + m));
-await db.exec(ler('migrations/009_formularios_condicionais.sql'));
-await db.exec(ler('migrations/009_formularios_condicionais.sql'));   // roda de novo sem erro
+await db.exec(ler('migrations/015_formularios_condicionais.sql'));
+await db.exec(ler('migrations/015_formularios_condicionais.sql'));   // roda de novo sem erro
 await db.exec(ler('atualizar_tipificacao.sql'));
 await db.exec(ler('atualizar_tipificacao.sql'));                     // e o carregamento também
 

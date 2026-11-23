@@ -1,6 +1,6 @@
-// Teste da 010 (malha ferroviária: trecho > sigla > km com cidade e UF) num Postgres em memória (PGlite).
+// Teste da 016 (malha ferroviária: trecho > sigla > km com cidade e UF) num Postgres em memória (PGlite).
 // Uso, numa pasta fora do projeto: npm i @electric-sql/pglite@0.2.17
-//   node <projeto>/supabase/testes/testar_010.mjs <projeto>/supabase
+//   node <projeto>/supabase/testes/testar_016.mjs <projeto>/supabase
 import { PGlite } from '@electric-sql/pglite';
 import fs from 'fs';
 const [, , raiz] = process.argv;
@@ -13,8 +13,8 @@ grant usage on schema auth to anon, authenticated; grant execute on function aut
 create schema storage; create table storage.buckets (id text primary key, name text, public boolean);
 create table storage.objects (id uuid default gen_random_uuid(), bucket_id text, name text); alter table storage.objects enable row level security;
 create function storage.foldername(name text) returns text[] language sql as $$ select string_to_array(name, '/') $$;`);
-for (const m of ['001_painel_ocorrencias.sql', '002_inteligencia.sql', '003_campo.sql', '004_tipificacao.sql', '010_malha_pontos.sql', '010_malha_pontos.sql'])
-  await db.exec(ler('migrations/' + m));   // a 010 roda duas vezes sem erro
+for (const m of ['001_painel_ocorrencias.sql', '002_inteligencia.sql', '003_campo.sql', '004_tipificacao.sql', '016_malha_pontos.sql', '016_malha_pontos.sql'])
+  await db.exec(ler('migrations/' + m));   // a 016 roda duas vezes sem erro
 
 let falhas = 0;
 const conf = (nome, ok, extra = '') => { console.log((ok ? 'ok   ' : 'FALHA') + ' ' + nome + (ok ? '' : ' -> ' + extra)); if (!ok) falhas++; };

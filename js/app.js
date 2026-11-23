@@ -461,7 +461,7 @@
     else ctrl = '<input class="r-input"' + at + ' type="text" maxlength="' + (Number(c.max) || 200) + '" autocomplete="off">';
     return '<div class="r-field" data-campo="' + esc(c.chave) + '"><label class="r-label" for="' + id + '">' + esc(c.rotulo) + req + '</label>' + ctrl + (c.ajuda ? '<span class="r-hint">' + esc(c.ajuda) + '</span>' : '') + '<div class="r-err" id="er-' + id + '" hidden></div></div>';
   }
-  /* Campos condicionais ("exibir_se"): a mesma regra da validação no banco (migration 009).
+  /* Campos condicionais ("exibir_se"): a mesma regra da validação no banco (migration 015).
      Um campo só aparece se o campo que o controla também aparece e tem o valor esperado (ou está preenchido). */
   function valorRef(k) { var el = $('f-' + k); return el ? String(el.value || '').trim() : ''; }
   function visiveisRef(campos, valor) {

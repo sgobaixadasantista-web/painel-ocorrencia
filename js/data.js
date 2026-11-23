@@ -178,7 +178,7 @@
         var fm = {}; f.forEach(function (x) { fm[x.codigo] = x; });
         return { linhas: t.filter(function (x) { return fm[x.formulario]; }), formularios: fm, siglas: siglas };
       },
-      // Malha ferroviária (migration 010): trechos e siglas para os seletores; marcos de km de uma sigla, com cidade e UF.
+      // Malha ferroviária (migration 016): trechos e siglas para os seletores; marcos de km de uma sigla, com cidade e UF.
       // Sem a tabela (migration não rodada) devolve lista vazia e a triagem volta às siglas de aux_siglas.
       async malhaSiglas() {
         var c = await lib(), r = await c.from('v_malha_siglas').select('trecho,sigla,km_min,km_max,cidades').order('trecho').order('sigla');
@@ -325,7 +325,7 @@
     var NI = 'NÃO INFORMADO', TIPIF = window.TIPIFICACAO_DEMO || { linhas: [], formularios: {} }, MINUTAS = window.MINUTAS_DEMO || [];
     function porId(id) { for (var i = 0; i < TIPIF.linhas.length; i++) if (TIPIF.linhas[i][0] === id) return TIPIF.linhas[i]; return null; }
     function TP(n, t, st) { for (var i = 0; i < TIPIF.linhas.length; i++) { var l = TIPIF.linhas[i]; if (l[1] === n && l[2] === t && l[3] === st) return l[0]; } throw new Error('tipificação da demonstração não encontrada: ' + [n, t, st].join(' > ')); }
-    // Mesmas regras do banco (validar_dados_formulario, migrations 004 e 009), com as mesmas mensagens.
+    // Mesmas regras do banco (validar_dados_formulario, migrations 004 e 015), com as mesmas mensagens.
     function validarDados(campos, dados) {
       dados = dados || {}; var ok = {}, perm = campos.map(function (c) { return c.chave; });
       Object.keys(dados).forEach(function (k) { if (perm.indexOf(k) < 0) falha('dados_invalidos', 'Campo que não existe neste formulário: ' + k.slice(0, 40)); });

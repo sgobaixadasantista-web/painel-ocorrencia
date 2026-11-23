@@ -29,11 +29,12 @@ supabase/migrations/
   003_campo.sql                 registro sem sinal (horário real, sem duplicar), GPS, contas novas inativas
   004_tipificacao.sql           natureza > tipo > subtipo (156 combinações), formulários por combinação, triagem única
   005_agentes_ia.sql            3 agentes de IA e 7 minutas do Rumo - SLA (AINDA NÃO ESTÁ NO REPOSITÓRIO; veja docs/SQL-FALTANTE.md)
-  009_formularios_condicionais.sql   classificação: campos condicionais, data + hora, duração (THP) e decimal
-  010_malha_pontos.sql          malha ferroviária (trecho > sigla > km) com cidade e UF, para o local da triagem
+  006 a 014                     app de campo: ficam no repositório security (mesmo banco, numeração única)
+  015_formularios_condicionais.sql   classificação: campos condicionais, data + hora, duração (THP) e decimal
+  016_malha_pontos.sql          malha ferroviária (trecho > sigla > km) com cidade e UF, para o local da triagem
 supabase/testes/testar_004.mjs  teste da 004 em Postgres na memória (banco novo e banco como o de produção)
-supabase/testes/testar_009.mjs  teste da 009 e da carga da classificação (supabase/atualizar_tipificacao.sql)
-supabase/testes/testar_010.mjs  teste da 010 e da carga da malha (supabase/dados/malha_pontos.csv)
+supabase/testes/testar_015.mjs  teste da 015 e da carga da classificação (supabase/atualizar_tipificacao.sql)
+supabase/testes/testar_016.mjs  teste da 016 e da carga da malha (supabase/dados/malha_pontos.csv)
 supabase/dados/                 base de classificação (JSON), IDs fixos da tipificação e malha_pontos.csv
 tools/gerar_malha.mjs           gera malha_pontos.csv (e js/malha-demo.js) da malha do app de campo + municípios do IBGE
 supabase/atualizar_*.sql        reaplicam a planilha e os agentes sem apagar o que você ajustou
@@ -89,7 +90,7 @@ Sem preencher o passo 5, o painel abre em **modo demonstração**: dados fictíc
 Na triagem, a central escolhe **Natureza ➜ Tipo ➜ Subtipo** e cada combinação **abre o formulário do seu subtipo**. A lista oficial é a base de classificação `supabase/dados/classificacao-ocorrencia.json`: **148 combinações, 86 subtipos, 86 formulários** (um por subtipo, com os campos do formulário de origem).
 
 - **Cabeçalho comum** a todos os formulários: empresa (malha: RUMO MALHA PAULISTA / NORTE) e o local, escolhido pela **malha ferroviária**: **Trecho ➜ Pátio/seção (SB) ➜ km** (lista dos marcos da sigla, a cada ~150 m). O km escolhido **preenche cidade e UF** sozinho (dá para corrigir à mão). Sem a malha no banco, o SB volta à lista de `aux_siglas`, que preenche o trecho.
-- **Malha no banco (migration 010):** tabela `malha_pontos` (56.599 marcos, 10 trechos, 357 siglas, 7 UFs) e visão `v_malha_siglas`. Carga: *Table Editor* > `malha_pontos` > *Insert* > *Import data from CSV* com `supabase/dados/malha_pontos.csv`. Cidade e UF de cada marco saem dos contornos municipais do IBGE (`node tools/gerar_malha.mjs <malha_ferroviaria.json do app> <pasta IBGE>`; o cabeçalho do script diz o que baixar). Quando a malha do app mudar, gere de novo, rode `truncate public.malha_pontos;` e importe o CSV novo.
+- **Malha no banco (migration 016):** tabela `malha_pontos` (56.599 marcos, 10 trechos, 357 siglas, 7 UFs) e visão `v_malha_siglas`. Carga: *Table Editor* > `malha_pontos` > *Insert* > *Import data from CSV* com `supabase/dados/malha_pontos.csv`. Cidade e UF de cada marco saem dos contornos municipais do IBGE (`node tools/gerar_malha.mjs <malha_ferroviaria.json do app> <pasta IBGE>`; o cabeçalho do script diz o que baixar). Quando a malha do app mudar, gere de novo, rode `truncate public.malha_pontos;` e importe o CSV novo.
 - **Campos condicionais:** o formulário se expande conforme as respostas (ex.: "GEROU ALARME RX? = SIM" abre os campos do alarme). Campo escondido não é obrigatório e o banco **recusa** resposta para campo que não estava na tela.
 - **Horários** com data + hora (emergência, chegadas das equipes de segurança, manutenção e recolha, término da manutenção, gabarito liberado e liberação para a circulação). Nenhum pode ser anterior ao horário da emergência.
 - **THP:** duração digitada em `hh:mm` (ex.: `01:52`; pode passar de 24 h).
@@ -97,8 +98,8 @@ Na triagem, a central escolhe **Natureza ➜ Tipo ➜ Subtipo** e cada combinaç
 - **Natureza criminal** cria a ocorrência para a inteligência; **mecânica, social e natural** são finalizadas pela central, com observação. Nos dois casos ficam gravados a tipificação e os dados do formulário.
 - **Para ajustar:** edite a base (`classificacao-ocorrencia.json`), gere o SQL com `python tools/gerar_tipificacao.py` e rode `supabase/atualizar_tipificacao.sql`. Os formulários gerados (código `CL_...`) são sobrescritos a cada geração, então **não os edite no Table Editor**. Os IDs ficam fixos em `supabase/dados/tipificacao-ids.json`: combinação que já existia mantém o ID; a que sai da base fica inativa, sem quebrar registros antigos. Os 9 formulários antigos (composição, via, …) continuam no banco para abrir os registros antigos.
 - **Formato de um campo** (`formularios.campos`): `{chave, rotulo, tipo, obrigatorio, grupo, ajuda?, opcoes?, max?, padrao?, exibir_se?, nao_antes_de?}`. Tipos: `texto`, `textarea`, `numero`, `decimal`, `km`, `hora`, `data_hora`, `duracao`, `select`, `sim_nao`.
-- A triagem passa por **uma única função do banco** (`triar_evento`), que valida o formulário (`validar_dados_formulario`, migration 009). Não existe caminho para pular os campos obrigatórios.
-- **Implantação:** rode `009_formularios_condicionais.sql` e, **depois**, `supabase/atualizar_tipificacao.sql` (os dois param com aviso se a ordem estiver errada). Para o local pela malha: `010_malha_pontos.sql` e a importação do CSV. Testes: `node supabase/testes/testar_009.mjs <projeto>/supabase` e `testar_010.mjs` (com `@electric-sql/pglite@0.2.17` instalado numa pasta fora do projeto).
+- A triagem passa por **uma única função do banco** (`triar_evento`), que valida o formulário (`validar_dados_formulario`, migration 015). Não existe caminho para pular os campos obrigatórios.
+- **Implantação:** rode `015_formularios_condicionais.sql` e, **depois**, `supabase/atualizar_tipificacao.sql` (os dois param com aviso se a ordem estiver errada). Para o local pela malha: `016_malha_pontos.sql` e a importação do CSV. Testes: `node supabase/testes/testar_015.mjs <projeto>/supabase` e `testar_016.mjs` (com `@electric-sql/pglite@0.2.17` instalado numa pasta fora do projeto).
 
 ## Como a IA funciona (3 agentes em cadeia)
 

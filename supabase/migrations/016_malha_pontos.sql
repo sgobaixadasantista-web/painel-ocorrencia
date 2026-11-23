@@ -1,5 +1,5 @@
 -- =====================================================================
--- 010 — Malha ferroviária para o preenchimento do local na triagem
+-- 016 — Malha ferroviária para o preenchimento do local na triagem
 --   Trecho > Sigla (SB) > km  →  cidade e UF preenchidas sozinhas.
 --   * public.malha_pontos: um marco por linha (a cada ~150 m), com cidade, UF e código IBGE
 --     calculados pelos contornos municipais do IBGE (tools/gerar_malha.mjs).
