@@ -38,7 +38,12 @@
   }
   window.PainelFila = {
     get persistente() { return persistente; },
-    iniciar: function () { return abrir().then(function () { return persistente; }); },
+    iniciar: function () {
+      // Pede ao navegador para não apagar a fila quando faltar espaço (sem isso, o sistema pode limpar registros não enviados).
+      // No Chrome do app instalado o pedido é aceito sem perguntar; em outros navegadores pode não ser atendido, e a fila segue funcionando.
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(function (ja) { if (!ja) navigator.storage.persist(); }).catch(function () {}); } catch (e) {}
+      return abrir().then(function () { return persistente; });
+    },
     adicionar: function (item) {
       return tx('readwrite', function (st) { if (!st) { memoria.push(item); return; } return st.put(item); });
     },

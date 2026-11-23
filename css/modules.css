@@ -60,6 +60,13 @@
 #gps-overlay .gps-pill{display:inline-block;padding:5px 9px;border-radius:15px;font-size:11px;font-weight:700}
 #gps-overlay .gps-ok{background:#dff4e8;color:#17643c}#gps-overlay .gps-off{background:#fce8df;color:#985126}
 #gps-overlay .gps-empty{text-align:center;padding:20px}
+#gps-overlay .gps-cards{grid-template-columns:repeat(5,minmax(0,1fr))}
+#gps-overlay .gps-cards article.gps-card-bad{border-color:#e7a29a;background:#fdecea}#gps-overlay .gps-cards article.gps-card-bad strong{color:#b42318}
+#gps-overlay .gps-alert-card{margin-bottom:14px}#gps-overlay .gps-alert-card h3{margin:2px 0 6px}#gps-overlay .gps-alert-card h3 small{font-weight:400;color:#526a80}
+#gps-overlay .gps-hint{margin:0 0 10px;color:#526a80;font-size:12px}
+#gps-overlay .gps-bad{background:#fdecea;color:#b42318}#gps-overlay .gps-warn{background:#fff4d6;color:#8a5a00}#gps-overlay .gps-info{background:#e8eef5;color:#24465f}
+#gps-overlay .gps-row-muted td{color:#7a8b9b}#gps-overlay .gps-row-muted small{color:#7a8b9b;margin-left:6px}
+#gps-overlay td.gps-msg{white-space:normal;min-width:220px}#gps-overlay .gps-scroll-sm{max-height:300px}
 @media(max-width:1050px){#gps-overlay .gps-layout{grid-template-columns:1fr}}@media(max-width:650px){#gps-overlay .gps-cards{grid-template-columns:repeat(2,minmax(0,1fr))}#gps-overlay .gps-main{padding:12px}}
 
 

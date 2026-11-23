@@ -43,6 +43,12 @@
       window.addEventListener('offline', function () { if (C) render(); });
       document.addEventListener('visibilitychange', function () { if (C && !document.hidden) { sincronizar(); } });
       document.addEventListener('keydown', function (e) { if (C && e.key === 'Escape' && !$('modal-root').innerHTML) { if (C.sheet) fecharSheet(); } });
+      // cartões com role="button": Enter e Espaço abrem como o clique
+      document.addEventListener('keydown', function (e) {
+        if (!C || (e.key !== 'Enter' && e.key !== ' ')) return;
+        var alvo = e.target && e.target.closest ? e.target.closest('[role="button"][data-ca]') : null;
+        if (alvo && alvo === e.target) { e.preventDefault(); alvo.click(); }
+      });
     }
     var eu = C;
     Promise.resolve(D.usuarioId()).then(function (id) {

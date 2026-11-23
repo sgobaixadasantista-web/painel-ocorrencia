@@ -73,6 +73,8 @@
      ==================================================================== */
   function criarSupabase() {
     var sb = null, carregando = null;
+    // Biblioteca do Supabase servida pelo próprio site (e guardada pelo service worker), para o app abrir sem internet.
+    var LIB = 'js/vendor/supabase-2.45.4.js';
     function lib() {
       if (sb) return Promise.resolve(sb);
       if (carregando) return carregando;
@@ -80,24 +82,77 @@
         function pronto() { sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } }); res(sb); }
         if (window.supabase && window.supabase.createClient) return pronto();
         var s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';
-        s.onload = pronto; s.onerror = function () { rej(new Error('Não foi possível carregar a biblioteca do Supabase.')); };
+        s.src = LIB;
+        s.onload = pronto; s.onerror = function () { carregando = null; var e = new Error('Não foi possível carregar a biblioteca do Supabase.'); e.rede = true; rej(e); };
         document.head.appendChild(s);
       });
       return carregando;
     }
     function ok(r) { if (r.error) throw erro(r.error); return r.data; }
+
+    /* ---------- Abertura sem internet ----------
+       Ao abrir, o painel confere a sessão e o perfil no servidor. Sem sinal isso falha, e o campo ficaria
+       sem acesso à própria fila. Por isso o último perfil confirmado pelo servidor fica guardado no aparelho e,
+       SÓ quando falta conexão, o painel abre com ele (modo "sem conexão"). Isso é só para a tela: toda gravação
+       continua passando pelo servidor, que confere login e perfil quando o sinal volta. */
+    var CHAVE_PERFIL = 'painel-perfil-confirmado';
+    var CHAVE_SESSAO = (function () { try { return 'sb-' + new URL(C.SUPABASE_URL).hostname.split('.')[0] + '-auth-token'; } catch (e) { return ''; } })();
+    var VALIDADE_OFFLINE_MS = 30 * 24 * 3600 * 1000;  // perfil guardado há mais de 30 dias não abre o painel sem conexão
+    function lsLer(k) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+    function guardarPerfil(user, p) {
+      try {
+        if (p && p.ativo && p.perfil) localStorage.setItem(CHAVE_PERFIL, JSON.stringify({ id: user.id, email: user.email, nome: p.nome || user.email, perfil: p.perfil, em: Date.now() }));
+        else localStorage.removeItem(CHAVE_PERFIL);
+      } catch (e) { /* sem armazenamento: só não abre sem conexão */ }
+    }
+    // Usuário da sessão gravada pelo Supabase no aparelho, mesmo com o token vencido (sem rede não dá para renovar).
+    function usuarioGuardado() {
+      var s = CHAVE_SESSAO && lsLer(CHAVE_SESSAO), u = s && (s.user || (s.currentSession && s.currentSession.user));
+      return u && u.id ? { id: u.id, email: u.email } : null;
+    }
+    function perfilOffline() {
+      var u = usuarioGuardado(), p = lsLer(CHAVE_PERFIL);
+      if (!u || !p || p.id !== u.id || !p.perfil || !(Date.now() - p.em < VALIDADE_OFFLINE_MS)) return null;
+      return { nome: p.nome, email: p.email, perfil: p.perfil };
+    }
+    function semRede(e) { return navigator.onLine === false || !!(e && (e.rede || /Failed to fetch|NetworkError|Load failed|network request failed/i.test(e.message || ''))); }
+    function limparSessaoLocal() {
+      try { localStorage.removeItem(CHAVE_PERFIL); if (CHAVE_SESSAO) { localStorage.removeItem(CHAVE_SESSAO); localStorage.removeItem(CHAVE_SESSAO + '-code-verifier'); } } catch (e) {}
+    }
+
+    // Sem rede, o Supabase insiste em renovar o login por ~30 s antes de desistir. Com perfil guardado, o painel não espera tanto.
+    var ESPERA_MAX_MS = 6000;
+    function comLimite(promessa, ms, seEsgotar) {
+      return Promise.race([promessa, new Promise(function (res) { setTimeout(function () { res(seEsgotar); }, ms); })]);
+    }
+    // Sessão de verdade (token válido ou renovado). Usada para ENVIAR: sem ela o envio espera, não vira erro.
+    async function sessaoValida() {
+      var c = await lib(), r = await c.auth.getSession();
+      if (r.error) throw erro(r.error);
+      if (r.data.session) return r.data.session;
+      if (navigator.onLine === false) { var e = new Error('Failed to fetch'); throw erro(e); }
+      var x = new Error('sessao_expirada'); x.hint = 'Sua sessão expirou. Saia e entre de novo para enviar os registros guardados.'; throw erro(x);
+    }
+
     var api = {
       modo: 'supabase',
       async iniciar() {
-        var c = await lib(); var s = ok(await c.auth.getSession());
-        if (!s.session) return { logado: false };
-        return api.perfil(s.session.user);
+        var off = perfilOffline(), modoOff = off && { logado: true, usuario: off, offline: true };
+        if (modoOff && navigator.onLine === false) return modoOff;   // aparelho sabe que está sem rede: abre na hora
+        var tentativa = (async function () {
+          var c = await lib(); var s = ok(await c.auth.getSession());
+          if (!s.session) return { logado: false };
+          return await api.perfil(s.session.user);
+        })();
+        if (!modoOff) return tentativa;
+        // tem perfil guardado: se o servidor não responder a tempo (sinal fraco, sem rede), abre com ele
+        return comLimite(tentativa.catch(function (e) { if (semRede(e)) return modoOff; throw e; }), ESPERA_MAX_MS, modoOff);
       },
       async perfil(user) {
         var c = await lib();
         var r = await c.from('perfis').select('nome,perfil,ativo,email').eq('id', user.id).maybeSingle();
         var p = ok(r);
+        guardarPerfil(user, p);
         if (!p || !p.ativo) return { logado: true, usuario: { nome: (p && p.nome) || user.email, email: user.email, perfil: null } };
         return { logado: true, usuario: { nome: p.nome || user.email, email: user.email, perfil: p.perfil } };
       },
@@ -106,7 +161,14 @@
         if (r.error) { var e = new Error(/Invalid login/i.test(r.error.message) ? 'E-mail ou senha incorretos.' : r.error.message); throw e; }
         return api.perfil(r.data.user);
       },
-      async sair() { var c = await lib(); await c.auth.signOut(); },
+      // Sair precisa funcionar sem sinal: o Supabase só apaga a sessão do aparelho se o servidor responder,
+      // então, se a chamada falhar, a sessão e o perfil guardados são apagados aqui mesmo.
+      async sair() {
+        var falhou = false;
+        try { var c = await lib(); var r = await comLimite(c.auth.signOut(), 3000, { error: 'sem_resposta' }); falhou = !!(r && r.error); } catch (e) { falhou = true; }
+        limparSessaoLocal();
+        if (falhou && sb) { sb = null; carregando = null; }   // cliente novo, sem a sessão antiga em memória
+      },
       // Tipificação (natureza > tipo > subtipo) e os formulários que cada combinação abre. Vem do banco: tabelas tipificacao e formularios.
       async tipificacao() {
         var c = await lib();
@@ -115,6 +177,21 @@
         var siglas = ok(await c.from('aux_siglas').select('sigla,trecho_codigo,ordem').eq('ativo', true).order('trecho_codigo').order('ordem'));
         var fm = {}; f.forEach(function (x) { fm[x.codigo] = x; });
         return { linhas: t.filter(function (x) { return fm[x.formulario]; }), formularios: fm, siglas: siglas };
+      },
+      // Malha ferroviária (migration 016): trechos e siglas para os seletores; marcos de km de uma sigla, com cidade e UF.
+      // Sem a tabela (migration não rodada) devolve lista vazia e a triagem volta às siglas de aux_siglas.
+      async malhaSiglas() {
+        var c = await lib(), r = await c.from('v_malha_siglas').select('trecho,sigla,km_min,km_max,cidades').order('trecho').order('sigla');
+        if (r.error) return [];
+        return r.data.map(function (x) { return { trecho: x.trecho, sigla: x.sigla, kmMin: x.km_min, kmMax: x.km_max, cidades: x.cidades || '' }; });
+      },
+      async malhaKms(trecho, sigla) {
+        var c = await lib(), todos = [], de = 0, LOTE = 1000;
+        for (;;) {   // o Supabase devolve no máximo 1000 linhas por consulta; uma sigla pode ter mais de 2.700 marcos
+          var r = ok(await c.from('malha_pontos').select('km_metros,km_texto,cidade,uf').eq('trecho', trecho).eq('sigla', sigla).order('km_metros').range(de, de + LOTE - 1));
+          todos = todos.concat(r); if (r.length < LOTE) break; de += LOTE;
+        }
+        return todos.map(function (x) { return { kmMetros: x.km_metros, km: x.km_texto, cidade: x.cidade || '', uf: x.uf || '' }; });
       },
       async listarEventos(f) { return listar('v_fila_eventos', f, evento, ['local', 'descricao', 'numero_formatado', 'criado_por_nome']); },
       async listarOcorrencias(f) { return listar('v_fila_ocorrencias', f, ocorrencia, ['local', 'descricao', 'numero_formatado', 'tipo', 'subtipo', 'evento_numero_formatado']); },
@@ -160,12 +237,21 @@
         return { ocorrenciaId: (r && r.ocorrencia_id) || null };
       },
       async adicionarAnalise(a) { var c = await lib(); ok(await c.rpc('adicionar_analise', { p_ocorrencia_id: a.ocorrenciaId, p_texto: a.texto })); },
-      async usuarioId() { var c = await lib(); var r = ok(await c.auth.getSession()); return r.session ? r.session.user.id : null; },
+      // Sem rede (token vencido ou biblioteca indisponível) vale o usuário guardado, para a fila do campo continuar sendo a dele.
+      async usuarioId() {
+        var u = perfilOffline() && usuarioGuardado();
+        if (u && navigator.onLine === false) return u.id;
+        var tentativa = (async function () {
+          try { var c = await lib(); var r = ok(await c.auth.getSession()); if (r.session) return r.session.user.id; } catch (e) { if (!semRede(e)) throw e; }
+          return u ? u.id : null;
+        })();
+        return u ? comLimite(tentativa, ESPERA_MAX_MS, u.id) : tentativa;
+      },
       offline: function () { return false; },
       simularOffline: function () {},
       // Registro do campo. Idempotente: o mesmo clientId nunca cria dois eventos, mesmo que o envio seja repetido.
       async registrarEvento(a) {
-        var c = await lib(), uid = await api.usuarioId(), bucket = C.BUCKET || 'evidencias', caminhos = [];
+        var c = await lib(), uid = (await sessaoValida()).user.id, bucket = C.BUCKET || 'evidencias', caminhos = [];
         for (var i = 0; i < (a.fotos || []).length; i++) {
           var caminho = uid + '/' + a.clientId + '-' + (i + 1) + '.jpg';
           var up = await c.storage.from(bucket).upload(caminho, a.fotos[i], { contentType: 'image/jpeg', upsert: false });
@@ -239,21 +325,36 @@
     var NI = 'NÃO INFORMADO', TIPIF = window.TIPIFICACAO_DEMO || { linhas: [], formularios: {} }, MINUTAS = window.MINUTAS_DEMO || [];
     function porId(id) { for (var i = 0; i < TIPIF.linhas.length; i++) if (TIPIF.linhas[i][0] === id) return TIPIF.linhas[i]; return null; }
     function TP(n, t, st) { for (var i = 0; i < TIPIF.linhas.length; i++) { var l = TIPIF.linhas[i]; if (l[1] === n && l[2] === t && l[3] === st) return l[0]; } throw new Error('tipificação da demonstração não encontrada: ' + [n, t, st].join(' > ')); }
-    // Mesmas regras do banco (validar_dados_formulario), com as mesmas mensagens.
+    // Mesmas regras do banco (validar_dados_formulario, migrations 004 e 015), com as mesmas mensagens.
     function validarDados(campos, dados) {
       dados = dados || {}; var ok = {}, perm = campos.map(function (c) { return c.chave; });
       Object.keys(dados).forEach(function (k) { if (perm.indexOf(k) < 0) falha('dados_invalidos', 'Campo que não existe neste formulário: ' + k.slice(0, 40)); });
+      var val = function (k) { return String(dados[k] == null ? '' : dados[k]).trim(); }, vis = {};
+      campos.forEach(function (c) { vis[c.chave] = true; });
+      for (var volta = 0, mudou = true; mudou && volta < 50; volta++) {
+        mudou = false;
+        campos.forEach(function (c) { var s = c.exibir_se; if (!s) return; var n = !!vis[s.campo] && (s.preenchido ? val(s.campo) !== '' : val(s.campo) === s.valor); if (n !== vis[c.chave]) { vis[c.chave] = n; mudou = true; } });
+      }
       campos.forEach(function (c) {
-        var t = String(dados[c.chave] == null ? '' : dados[c.chave]).trim();
+        var t = val(c.chave);
+        if (!vis[c.chave]) { if (t) falha('dados_invalidos', c.rotulo + ': este campo não se aplica com as respostas dadas.'); return; }
         if (!t) { if (c.obrigatorio) falha('dados_incompletos', 'Preencha o campo: ' + c.rotulo + '.'); return; }
         var r = c.rotulo;
         if (c.tipo === 'numero' && !/^\d{1,9}$/.test(t)) falha('dados_invalidos', r + ': informe só números.');
+        else if (c.tipo === 'decimal' && !/^\d{1,9}([.,]\d{1,3})?$/.test(t)) falha('dados_invalidos', r + ': informe um número (até 3 casas decimais).');
+        else if (c.tipo === 'duracao' && !/^\d{1,3}:[0-5]\d$/.test(t)) falha('dados_invalidos', r + ': use horas e minutos, ex. 01:52.');
+        else if (c.tipo === 'data_hora' && !/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/.test(t)) falha('dados_invalidos', r + ': informe data e hora.');
         else if (c.tipo === 'km' && !/^\d{1,4}\+\d{3}$/.test(t)) falha('dados_invalidos', r + ': use o formato 115+500.');
         else if (c.tipo === 'hora' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) falha('dados_invalidos', r + ': use o formato HH:MM.');
         else if (c.tipo === 'sim_nao' && ['sim', 'nao'].indexOf(t) < 0) falha('dados_invalidos', r + ': escolha Sim ou Não.');
         else if (c.tipo === 'select' && (c.opcoes || []).indexOf(t) < 0) falha('dados_invalidos', r + ': escolha uma das opções da lista.');
         else if ((c.tipo === 'texto' || c.tipo === 'textarea') && t.length > (c.max || (c.tipo === 'texto' ? 200 : 2000))) falha('dados_invalidos', r + ': texto longo demais.');
         ok[c.chave] = t;
+      });
+      campos.forEach(function (c) {
+        var ref = c.nao_antes_de; if (!ref || !ok[c.chave] || !ok[ref] || ok[c.chave] >= ok[ref]) return;
+        var rc = campos.filter(function (x) { return x.chave === ref; })[0];
+        falha('dados_invalidos', c.rotulo + ': não pode ser anterior a ' + (rc ? rc.rotulo : ref) + '.');
       });
       return ok;
     }
@@ -318,7 +419,7 @@
     var c5 = caso('Passagem em nível, km 22+100', 'Locomotiva parada foi abordada por homens armados e teve combustível retirado dos tanques. Maquinista sem ferimentos.', 8, TP('criminal', 'ROUBO', 'COMBUSTÍVEL'), 'solicitacao',
       { status: 'em_andamento', boletimExiste: true, boletimNumero: 'BO 457/2026', analiseMesa: 'Polícia acionada. Via liberada em 40 min.' }, { km: '22+100', empresa: 'RUMO', prefixo: 'T55', locomotiva: '9001', ativo_afetado: 'combustível diesel' });
     analises.push({ ocorrenciaId: c5.id, texto: 'Boletim registrado pelo condutor. Aguardando laudo da perícia.', em: agora - 6 * H, autor: 'Operador Central' });
-    caso('ZSD-Santa Adélia', 'Ataque a equipe de segurança com pedras durante ronda. Dois vigilantes com escoriações.', 20, TP('criminal', 'ATAQUE ÀS EQUIPES DE SEGURANÇA', 'AGRESSÃO'), 'flagrante', {}, { km: '210+000', vitimas: '2', lesao: 'LESÃO LEVE' });
+    caso('ZSD-Santa Adélia', 'Ataque a equipe de segurança com pedras durante ronda. Dois vigilantes com escoriações.', 20, TP('criminal', 'ATAQUE', 'AGRESSÃO'), 'flagrante', {}, { km: '210+000', vitimas: '2', lesao: 'LESÃO LEVE' });
     var c8 = caso('Trecho 3, km 120+000', 'Porta de abrigo de equipamentos arrombada. Itens não conferidos.', 120, TP('criminal', 'DANO', 'DEPREDAÇÃO'), 'denuncia',
       { status: 'concluido', boletimExiste: false, classificacao: 'social', classificadoEm: agora - 100 * H, concluidoEm: agora - 99 * H }, { km: '120+000' });
     analises.push({ ocorrenciaId: c8.id, texto: 'Nada subtraído. Fechadura trocada.', em: agora - 110 * H, autor: 'Operador Central' });
@@ -406,6 +507,17 @@
       entrar: function () { return lat({ logado: true, usuario: usuario }); },
       sair: function () { return lat(); },
       tipificacao: function () { return lat({ linhas: TIPIF.linhas.map(function (l) { return { id: l[0], natureza: l[1], tipo: l[2], subtipo: l[3], formulario: l[4] }; }), formularios: JSON.parse(JSON.stringify(TIPIF.formularios)) }); },
+      // malha de amostra (Baixada Santista) em js/malha-demo.js: [trecho, sigla, km_metros, cidade, uf]
+      malhaSiglas: function () {
+        var g = {}; (window.MALHA_DEMO || []).forEach(function (p) { var k = p[0] + '|' + p[1], x = g[k] || (g[k] = { trecho: p[0], sigla: p[1], kmMin: p[2], kmMax: p[2], cid: {} });
+          x.kmMin = Math.min(x.kmMin, p[2]); x.kmMax = Math.max(x.kmMax, p[2]); x.cid[p[3] + '/' + p[4]] = 1; });
+        return lat(Object.keys(g).sort().map(function (k) { var x = g[k]; return { trecho: x.trecho, sigla: x.sigla, kmMin: x.kmMin, kmMax: x.kmMax, cidades: Object.keys(x.cid).join(', ') }; }));
+      },
+      malhaKms: function (trecho, sigla) {
+        var f = function (m) { return Math.floor(m / 1000) + '+' + ('00' + (m % 1000)).slice(-3); };
+        return lat((window.MALHA_DEMO || []).filter(function (p) { return p[0] === trecho && p[1] === sigla; }).sort(function (a, b) { return a[2] - b[2]; })
+          .map(function (p) { return { kmMetros: p[2], km: f(p[2]), cidade: p[3], uf: p[4] }; }));
+      },
       listarEventos: function (f) { var base = f.somenteMeus ? eventos.filter(function (e) { return e.criadoPorNome === usuario.nome; }) : eventos; return lat(pagina(filtrar(base, f, ['local', 'descricao', 'numero', 'criadoPorNome'], 'concluido'), f, ev)); },
       listarOcorrencias: function (f) { return lat(pagina(filtrar(ocorrencias, f, ['local', 'descricao', 'numero', 'tipo', 'subtipo', 'eventoNumero'], 'concluido'), f, oc)); },
       detalheEvento: function (id) {

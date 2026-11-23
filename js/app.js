@@ -60,10 +60,18 @@
   }
   function tempoTxt(x) { return (x.status === 'concluido' ? 'em ' : '') + fmtDur(decorrido(x)); }
   function indexarTipif(t) { var p = {}; t.linhas.forEach(function (l) { p[l.id] = l; }); return { linhas: t.linhas, formularios: t.formularios, porId: p, siglas: t.siglas || [] }; }
-  function carregarTipif() { return D.tipificacao().then(function (t) { S.tipif = indexarTipif(t); }); }
+  function carregarTipif() {
+    // a malha é opcional: sem ela, trecho e SB voltam ao preenchimento por aux_siglas
+    D.malhaSiglas().then(function (s) { S.malha = { siglas: s || [], kms: {} }; }).catch(function () { S.malha = { siglas: [], kms: {} }; });
+    return D.tipificacao().then(function (t) { S.tipif = indexarTipif(t); });
+  }
   function tipifTxt(nat, tipo, sub) { return [lbl(NATUREZAS, nat).toUpperCase(), tipo, sub].filter(Boolean).join(' › '); }
   function camposDe(id) { var l = S.tipif.porId[id], f = l && S.tipif.formularios[l.formulario]; return f ? f.campos : []; }
-  function valorDado(c, v) { return c.tipo === 'sim_nao' ? (v === 'sim' ? 'Sim' : 'Não') : v; }
+  function valorDado(c, v) {
+    if (c.tipo === 'sim_nao') return v === 'sim' ? 'Sim' : 'Não';
+    var m = c.tipo === 'data_hora' && /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})/.exec(v || ''); if (m) return m[3] + '/' + m[2] + '/' + m[1] + ' ' + m[4];
+    return v;
+  }
   // Dados que a central preencheu no formulário da combinação (rótulos vêm do próprio formulário)
   function dadosHtml(tipificacaoId, dados) {
     var cs = camposDe(tipificacaoId), rot = {}; cs.forEach(function (c) { rot[c.chave] = c; });
@@ -403,19 +411,82 @@
     syncTriagem();
     if (subs.length === 1) { st.value = subs[0]; aoEscolherSubtipo(); }
   }
+  /* ----- Malha ferroviária (tabela malha_pontos): Trecho > Sigla (SB) > km > cidade e UF ----- */
+  function temMalha() { return !!(S.malha && S.malha.siglas.length); }
+  function malhaTrechos() { return unicos(S.malha.siglas.map(function (x) { return x.trecho; })).sort(function (a, b) { return a.localeCompare(b, 'pt-BR', { numeric: true }); }); }
+  function definir(id, v) { var el = $(id); if (el && el.value !== v) { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); } }
+  function aoEscolherTrechoMalha() {
+    var tr = $('f-trecho').value, sb = $('f-sb'), km = $('f-km'); if (!sb || !km) return;
+    var ss = S.malha.siglas.filter(function (x) { return x.trecho === tr; });
+    sb.disabled = !ss.length;
+    sb.innerHTML = '<option value="">' + (tr ? 'Selecione a sigla (' + ss.length + ')' : 'Escolha o trecho primeiro') + '</option>' +
+      ss.map(function (x) { return '<option value="' + esc(x.sigla) + '">' + esc(x.sigla + (x.cidades ? ' — ' + x.cidades : '')) + '</option>'; }).join('');
+    km.disabled = true; km.innerHTML = '<option value="">Escolha a sigla primeiro</option>';
+    definir('f-cidade', ''); definir('f-uf', '');
+  }
+  function aoEscolherSiglaMalha() {
+    var tr = $('f-trecho').value, sg = $('f-sb').value, km = $('f-km'), chave = tr + '|' + sg; if (!km) return;
+    definir('f-cidade', ''); definir('f-uf', '');
+    if (!sg) { km.disabled = true; km.innerHTML = '<option value="">Escolha a sigla primeiro</option>'; return; }
+    km.disabled = true; km.innerHTML = '<option value="">Carregando os km…</option>';
+    var p = S.malha.kms[chave] ? Promise.resolve(S.malha.kms[chave]) : D.malhaKms(tr, sg).then(function (l) { S.malha.kms[chave] = l; return l; });
+    p.then(function (l) {
+      if ($('f-sb') !== null && ($('f-trecho').value + '|' + $('f-sb').value) !== chave) return;   // trocou de sigla enquanto carregava
+      km.disabled = !l.length;
+      km.innerHTML = '<option value="">Selecione o km (' + l.length + ')</option>' + l.map(function (x) { return '<option value="' + esc(x.km) + '">' + esc(x.km + (x.cidade ? ' · ' + x.cidade + '/' + x.uf : '')) + '</option>'; }).join('');
+    }).catch(function (e) { km.innerHTML = '<option value="">Não foi possível carregar os km</option>'; toast('warning', 'Malha indisponível', e.message); });
+  }
+  function aoEscolherKmMalha() {
+    var l = S.malha.kms[$('f-trecho').value + '|' + $('f-sb').value] || [], v = $('f-km').value, x = l.filter(function (p) { return p.km === v; })[0];
+    definir('f-cidade', x ? x.cidade : ''); definir('f-uf', x ? x.uf : '');
+  }
   /* ----- Formulário de referência da combinação (definido na tabela "formularios") ----- */
   function campoRef(c) {
-    var id = 'f-' + c.chave, req = c.obrigatorio ? '<span class="r-req" aria-hidden="true">*</span>' : '', at = ' id="' + id + '" data-k="' + esc(c.chave) + '" data-t="' + esc(c.tipo) + '"', ctrl;
-    if (c.chave === 'sb') ctrl = '<select class="r-input"' + at + '><option value="">Selecione a sigla (SB)</option>' + (S.tipif.siglas || []).map(function (s) { return '<option value="' + esc(s.sigla) + '">' + esc(s.sigla) + '</option>'; }).join('') + '</select>';
-    else if (c.tipo === 'textarea') ctrl = '<textarea class="r-input"' + at + ' maxlength="' + (c.max || 2000) + '"></textarea>';
-    else if (c.tipo === 'select') ctrl = '<select class="r-input"' + at + '><option value="">Selecione</option>' + (c.opcoes || []).map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '</select>';
+    var id = 'f-' + String(c.chave).replace(/[^A-Za-z0-9_-]/g, '_'), req = c.obrigatorio ? '<span class="r-req" aria-hidden="true">*</span>' : '', at = ' id="' + id + '" data-k="' + esc(c.chave) + '" data-t="' + esc(c.tipo) + '"', ctrl;
+    var malha = temMalha();
+    // Local pela malha ferroviária: Trecho > Sigla (SB) > km; o km escolhido preenche cidade e UF
+    if (malha && c.chave === 'trecho') ctrl = '<select class="r-input"' + at + '><option value="">Selecione o trecho</option>' + malhaTrechos().map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('') + '</select>';
+    else if (malha && c.chave === 'sb') ctrl = '<select class="r-input"' + at + ' disabled><option value="">Escolha o trecho primeiro</option></select>';
+    else if (malha && c.chave === 'km') ctrl = '<select class="r-input"' + at + ' disabled><option value="">Escolha a sigla primeiro</option></select>';
+    else if (c.chave === 'sb') ctrl = '<select class="r-input"' + at + '><option value="">Selecione a sigla (SB)</option>' + (S.tipif.siglas || []).map(function (s) { return '<option value="' + esc(s.sigla) + '">' + esc(s.sigla) + '</option>'; }).join('') + '</select>';
+    else if (c.tipo === 'textarea') ctrl = '<textarea class="r-input"' + at + ' maxlength="' + (Number(c.max) || 2000) + '"></textarea>';
+    else if (c.tipo === 'select') ctrl = '<select class="r-input"' + at + '><option value="">Selecione</option>' + (c.opcoes || []).map(function (o) { return '<option' + (c.padrao != null && o === String(c.padrao) ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
     else if (c.tipo === 'sim_nao') ctrl = '<select class="r-input"' + at + '><option value="">Selecione</option><option value="sim">Sim</option><option value="nao">Não</option></select>';
     else if (c.tipo === 'hora') ctrl = '<input class="r-input"' + at + ' type="time">';
+    else if (c.tipo === 'data_hora') ctrl = '<input class="r-input"' + at + ' type="datetime-local">';
+    else if (c.tipo === 'duracao') ctrl = '<input class="r-input"' + at + ' type="text" inputmode="numeric" placeholder="hh:mm" maxlength="6" autocomplete="off">';
     else if (c.tipo === 'numero') ctrl = '<input class="r-input"' + at + ' type="text" inputmode="numeric" maxlength="9" autocomplete="off">';
+    else if (c.tipo === 'decimal') ctrl = '<input class="r-input"' + at + ' type="text" inputmode="decimal" maxlength="13" autocomplete="off">';
     else if (c.tipo === 'km') ctrl = '<input class="r-input"' + at + ' type="text" placeholder="115+500" maxlength="9" autocomplete="off">';
-    else ctrl = '<input class="r-input"' + at + ' type="text" maxlength="' + (c.max || 200) + '" autocomplete="off">';
-    return '<div class="r-field"><label class="r-label" for="' + id + '">' + esc(c.rotulo) + req + '</label>' + ctrl + (c.ajuda ? '<span class="r-hint">' + esc(c.ajuda) + '</span>' : '') + '<div class="r-err" id="er-' + id + '" hidden></div></div>';
+    else ctrl = '<input class="r-input"' + at + ' type="text" maxlength="' + (Number(c.max) || 200) + '" autocomplete="off">';
+    return '<div class="r-field" data-campo="' + esc(c.chave) + '"><label class="r-label" for="' + id + '">' + esc(c.rotulo) + req + '</label>' + ctrl + (c.ajuda ? '<span class="r-hint">' + esc(c.ajuda) + '</span>' : '') + '<div class="r-err" id="er-' + id + '" hidden></div></div>';
   }
+  /* Campos condicionais ("exibir_se"): a mesma regra da validação no banco (migration 015).
+     Um campo só aparece se o campo que o controla também aparece e tem o valor esperado (ou está preenchido). */
+  function valorRef(k) { var el = $('f-' + k); return el ? String(el.value || '').trim() : ''; }
+  function visiveisRef(campos, valor) {
+    var vis = {}; campos.forEach(function (c) { vis[c.chave] = true; });
+    for (var volta = 0, mudou = true; mudou && volta < 50; volta++) {
+      mudou = false;
+      campos.forEach(function (c) {
+        var s = c.exibir_se; if (!s) return;
+        var v = valor(s.campo), novo = !!vis[s.campo] && (s.preenchido ? v !== '' : v === s.valor);
+        if (novo !== vis[c.chave]) { vis[c.chave] = novo; mudou = true; }
+      });
+    }
+    return vis;
+  }
+  function aplicarVisibilidade() {
+    var l = triLinha(), fm = l && S.tipif.formularios[l.formulario]; if (!fm) return;
+    var vis = visiveisRef(fm.campos, valorRef);
+    fm.campos.forEach(function (c) {
+      var w = document.querySelector('#tri-dyn [data-campo="' + c.chave + '"]'); if (!w || w.hidden === !vis[c.chave]) return;
+      w.hidden = !vis[c.chave]; if (!vis[c.chave]) erroCampo('er-f-' + c.chave, '', 'f-' + c.chave);
+    });
+    // grupo com todos os campos escondidos some da tela
+    document.querySelectorAll('#tri-dyn .ref-grupo').forEach(function (g) { g.hidden = !g.querySelector('.r-field:not([hidden])'); });
+  }
+  function mascaraDuracao(v) { var d = String(v).replace(/\D/g, '').slice(0, 5); return d.length <= 2 ? d : d.slice(0, -2) + ':' + d.slice(-2); }
   function aoEscolherSubtipo() {
     var l = triLinha(), box = $('tri-dyn'); syncTriagem(); if (!l) { box.innerHTML = ''; return; }
     var fm = S.tipif.formularios[l.formulario]; if (!fm) { box.innerHTML = '<p class="aviso">Esta combinação não tem formulário ativo.</p>'; return; }
@@ -430,10 +501,14 @@
         : '<details class="ref-grupo" data-g="' + esc(g) + '"><summary>' + esc(g) + ' <span class="r-hint">(' + cs.length + ' campos, opcionais)</span></summary>' + corpo + '</details>';
     });
     box.innerHTML = h + '</div>';
+    aplicarVisibilidade();
   }
   function validarCampoRef(c, t) {
     var r = c.rotulo; if (!t) return c.obrigatorio ? 'Preencha o campo: ' + r + '.' : '';
     if (c.tipo === 'numero' && !/^\d{1,9}$/.test(t)) return r + ': informe só números.';
+    if (c.tipo === 'decimal' && !/^\d{1,9}([.,]\d{1,3})?$/.test(t)) return r + ': informe um número (até 3 casas decimais).';
+    if (c.tipo === 'duracao' && !/^\d{1,3}:[0-5]\d$/.test(t)) return r + ': use horas e minutos, ex. 01:52.';
+    if (c.tipo === 'data_hora' && !/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/.test(t)) return r + ': informe data e hora.';
     if (c.tipo === 'km' && !/^\d{1,4}\+\d{3}$/.test(t)) return r + ': use o formato 115+500.';
     if (c.tipo === 'hora' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) return r + ': use o formato HH:MM.';
     if (c.tipo === 'select' && (c.opcoes || []).indexOf(t) < 0) return r + ': escolha uma das opções da lista.';
@@ -441,11 +516,18 @@
     return '';
   }
   function coletarForm(l) {
-    var fm = S.tipif.formularios[l.formulario], dados = {}, bad = false;
+    var fm = S.tipif.formularios[l.formulario], dados = {}, bad = false, vis = visiveisRef(fm.campos, valorRef);
+    function marcar(c, m) { erroCampo('er-f-' + c.chave, m, 'f-' + c.chave); if (m) { bad = true; var el = $('f-' + c.chave), d = el && el.closest('details'); if (d) d.open = true; } }
     fm.campos.forEach(function (c) {
-      var el = $('f-' + c.chave), v = el ? String(el.value || '').trim() : '', m = validarCampoRef(c, v);
-      erroCampo('er-f-' + c.chave, m, 'f-' + c.chave);
-      if (m) { bad = true; var d = el && el.closest('details'); if (d) d.open = true; } else if (v) dados[c.chave] = v;
+      if (!vis[c.chave]) { erroCampo('er-f-' + c.chave, '', 'f-' + c.chave); return; }   // escondido: não vai para o banco
+      var v = valorRef(c.chave), m = validarCampoRef(c, v);
+      marcar(c, m); if (!m && v) dados[c.chave] = v;
+    });
+    // horários que não podem ser anteriores a outro (ex.: chegada da equipe x emergência)
+    fm.campos.forEach(function (c) {
+      var ref = c.nao_antes_de; if (!ref || !dados[c.chave] || !dados[ref] || dados[c.chave] >= dados[ref]) return;
+      var rc = fm.campos.filter(function (x) { return x.chave === ref; })[0];
+      marcar(c, c.rotulo + ': não pode ser anterior a ' + (rc ? rc.rotulo : ref) + '.'); delete dados[c.chave];
     });
     return { dados: dados, bad: bad };
   }
@@ -566,7 +648,7 @@
     // Agente 2
     h += '<details class="ia-etapa" open><summary>2. Tipificação penal e minuta</summary>' +
       (a2.tipificacao ? '<dl class="kv"><dt>Tipificação</dt><dd><b>' + esc(a2.tipificacao.artigo) + '</b> · uso interno, não vai para o boletim<br>' + esc(a2.tipificacao.fundamento) + '</dd>' +
-        '<dt>Minuta</dt><dd>' + (a2.minuta ? '<b>Minuta ' + a2.minuta.numero + ' — ' + esc(a2.minuta.nome) + '</b><br>' + esc(a2.minuta.justificativa) : '<b>' + esc(a2.mensagem || 'MINUTA NÃO APLICÁVEL') + '</b>') + '</dd></dl>' : '') +
+        '<dt>Minuta</dt><dd>' + (a2.minuta ? '<b>Minuta ' + esc(a2.minuta.numero) + ' — ' + esc(a2.minuta.nome) + '</b><br>' + esc(a2.minuta.justificativa) : '<b>' + esc(a2.mensagem || 'MINUTA NÃO APLICÁVEL') + '</b>') + '</dd></dl>' : '') +
       (a2.encerrado && a2.mensagem && !a2.tipificacao ? '<p class="txt"><b>' + esc(a2.mensagem) + '</b></p>' : '') + '</details>';
     // Agente 3
     h += '<div class="ia-etapa-fixa"><h4 class="sec-t">3. Parecer para a Delegacia Digital</h4>';
@@ -681,7 +763,7 @@
         var r = S.aba === 'eventos' ? await D.listarEventos(f) : await D.listarOcorrencias(f);
         todos = todos.concat(r.linhas); total = r.total; pg++;
       } while (todos.length < total && pg <= 20);
-      var cel = function (v) { v = v == null ? '' : String(v); return /[;"\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      var cel = function (v) { v = v == null ? '' : String(v); if (/^[=+\-@\t\r]/.test(v)) v = "'" + v; /* texto do campo não vira fórmula no Excel */ return /[;"\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
       var ev = S.aba === 'eventos', cab, rows;
       if (ev) { cab = ['Número', 'Registrado em', 'Local', 'Descrição', 'Registrado por', 'Tempo', 'Status', 'Triagem', 'Tipificação']; rows = todos.map(function (e) { return [e.numero, fmtData(e.criadoEm), e.local, e.descricao, e.criadoPorNome, tempoTxt(e), tomEvento(e).t, lbl(TRIAGEM, e.triagemCategoria), e.tipificacaoId ? tipifTxt(e.tipifNatureza, e.tipifTipo, e.tipifSubtipo) : '']; }); }
       else { cab = ['Número', 'Evento', 'Fato em', 'Local', 'Natureza', 'Tipo', 'Subtipo', 'Tempo', 'Status', 'Boletim', 'Classificação']; rows = todos.map(function (o) { return [o.numero, o.eventoNumero, fmtData(o.fatoEm), o.local, lbl(NATUREZAS, o.natureza), o.tipo, o.subtipo, tempoTxt(o), tomOc(o).t, o.boletimExiste == null ? 'Pendente' : (o.boletimExiste ? 'Sim' + (o.boletimNumero ? ' ' + o.boletimNumero : '') : 'Não'), lbl(CLASSES, o.classificacao)]; }); }
@@ -738,8 +820,12 @@
     else if (t.name === 'nat') aoEscolherNatureza();
     else if (t.id === 'tri-tipo') aoEscolherTipo();
     else if (t.id === 'tri-sub') aoEscolherSubtipo();
+    else if (t.id === 'f-trecho' && temMalha()) aoEscolherTrechoMalha();
+    else if (t.id === 'f-sb' && temMalha()) aoEscolherSiglaMalha();
+    else if (t.id === 'f-km' && temMalha()) aoEscolherKmMalha();
     else if (t.id === 'f-sb') { var trecho = $('f-trecho'), sigla = (S.tipif.siglas || []).find(function (s) { return s.sigla === t.value; }); if (trecho) { trecho.value = sigla ? sigla.trecho_codigo : ''; trecho.dispatchEvent(new Event('input', { bubbles: true })); } }
     else if (t.id === 'bo-existe') { var f = $('fd-bo-num'); if (f) f.hidden = t.value !== 'sim'; }
+    if (t.closest && t.closest('#tri-dyn')) aplicarVisibilidade();
   });
   document.addEventListener('focusout', function (ev) {
     var t = ev.target; if (!t || t.getAttribute('data-t') !== 'km') return;
@@ -747,6 +833,9 @@
   });
   var _busca = null;
   document.addEventListener('input', function (ev) {
+    var dt = ev.target.getAttribute && ev.target.getAttribute('data-t');
+    if (dt === 'duracao') { var md = mascaraDuracao(ev.target.value); if (md !== ev.target.value) ev.target.value = md; }
+    if (dt && ev.target.closest('#tri-dyn')) aplicarVisibilidade();
     if (ev.target.id === 'busca') { clearTimeout(_busca); var v = ev.target.value; _busca = setTimeout(function () { S.busca = v.trim(); S.pagina = 1; carregar({ silencioso: true }); }, 350); }
   });
   document.addEventListener('submit', function (ev) {
@@ -764,7 +853,25 @@
     if (S.userPop) { S.userPop = false; renderTopbar(); return; }
     if (S.sel) fechar();
   });
-  window.addEventListener('online', function () { S.sync = 'syncing'; renderSub(); carregar({ silencioso: true }); });
+  window.addEventListener('online', function () {
+    if (S.abertoOffline) { S.sync = 'syncing'; renderSub(); revalidar(); return; }
+    if (!S.usuario || S.tela !== 'painel') return; // tela de login: nada a carregar
+    S.sync = 'syncing'; renderSub(); carregar({ silencioso: true });
+  });
+  // Painel aberto sem conexão (com o último perfil guardado): quando o sinal volta, confere login e perfil no servidor.
+  // Também tenta a cada minuto, porque com sinal fraco o aparelho nem sempre avisa que a conexão voltou.
+  var revalidando = false;
+  setInterval(function () { if (S.abertoOffline && navigator.onLine !== false && !document.hidden) revalidar(); }, 60000);
+  function revalidar() {
+    if (revalidando) return; revalidando = true;
+    D.iniciar().finally(function () { revalidando = false; }).then(function (r) {
+      if (r.offline) return;                       // ainda sem acesso ao servidor: tenta de novo no próximo "online"
+      S.abertoOffline = false;
+      if (!r.logado) { pararTudo(); fechar(); S.usuario = null; S.tela = 'login'; renderApp(); toast('warning', 'Entre de novo', 'Sua sessão expirou. Os registros que estão no aparelho continuam guardados.'); return; }
+      if (!S.usuario || r.usuario.perfil !== S.usuario.perfil) { entrou(r.usuario); return; }
+      S.usuario = r.usuario; if (!ehCampo()) carregar({ silencioso: true });
+    }).catch(function () { /* servidor ainda instável: mantém o painel como está */ });
+  }
   window.addEventListener('offline', function () { S.sync = 'offline'; renderSub(); });
 
   /* ---------- Ciclo de vida ---------- */
@@ -787,10 +894,14 @@
     carregarTipif().catch(function () { toast('warning', 'Tipificação indisponível', 'A triagem precisa da lista de natureza, tipo e subtipo. Atualize a página.'); });
     ligarPainel();
   }
-  function sair() { pararTudo(); fechar(); S.userPop = false; D.sair().catch(function () {}).then(function () { S.usuario = null; S.dados = { linhas: [], total: 0 }; S.kpi = null; S.tela = 'login'; renderApp(); }); }
+  function sair() { pararTudo(); fechar(); S.userPop = false; S.abertoOffline = false; D.sair().catch(function () {}).then(function () { S.usuario = null; S.dados = { linhas: [], total: 0 }; S.kpi = null; S.tela = 'login'; renderApp(); }); }
   function iniciar() {
     S.tela = 'carregando'; renderApp();
-    D.iniciar().then(function (r) { if (!r.logado) { S.tela = 'login'; renderApp(); return; } entrou(r.usuario); })
+    D.iniciar().then(function (r) {
+      if (!r.logado) { S.tela = 'login'; renderApp(); return; }
+      S.abertoOffline = !!r.offline; entrou(r.usuario);
+      if (r.offline) toast('info', 'Sem conexão', 'Painel aberto com o seu último acesso. Login e perfil serão conferidos quando o sinal voltar.');
+    })
       .catch(function (e) { S.tela = 'erroInicial'; S.erro = e.message; renderApp(); });
   }
   window.PainelUI = { esc: esc, fmtData: fmtData, fmtDur: fmtDur, badge: badge, estado: estado, toast: toast, confirmar: confirmar };

@@ -2,8 +2,31 @@
 (function(){
 'use strict';
 const app=()=>document.getElementById('app');
-const overlays={'mapa-gps':'gps-overlay','efetivo-turno':'efetivo-overlay','veiculo-turno':'veiculos-overlay','frota':'frota-overlay','colaboradores':'colab-overlay'};
-const closeIds={'gps-overlay':'gps-close','efetivo-overlay':'ef-close','veiculos-overlay':'vt-close','frota-overlay':'frota-close','colab-overlay':'colab-close'};
+const overlays={'mapa-gps':'gps-overlay','efetivo-turno':'efetivo-overlay','veiculo-turno':'veiculos-overlay','frota':'frota-overlay','colaboradores':'colab-overlay','gestao-postos':'postos-overlay'};
+const closeIds={'gps-overlay':'gps-close','efetivo-overlay':'ef-close','veiculos-overlay':'vt-close','frota-overlay':'frota-close','colab-overlay':'colab-close','postos-overlay':'postos-close'};
+// Abre cada módulo direto pela API que ele expõe. (Antes o menu clicava em botões da
+// barra superior; esses botões foram removidos e os módulos deixaram de abrir.)
+// [objeto global do módulo, função que abre]
+// Módulo novo: crie js/<modulo>.js com window.SecurityXxx={show}, um overlay <div id="xxx-overlay" class="ccs-modulo">
+// com botão de fechar, e registre aqui em overlays, closeIds e openers (e no menu em items()). Ver css/navigation.css.
+const openers={
+ 'mapa-gps':['SecurityTrackingMap','show'],
+ 'efetivo-turno':['SecurityEfetivo','show'],
+ 'veiculo-turno':['SecurityVeiculos','show'],
+ 'frota':['SecurityFrota','open'],
+ 'colaboradores':['SecurityColaboradores','show'],
+ 'gestao-postos':['SecurityPostos','show']
+};
+function openModule(id){
+ const [global,fn]=openers[id]||[];
+ const mod=global&&window[global];
+ if(!mod||typeof mod[fn]!=='function'){console.warn('Módulo não carregado:',id);return false;}
+ try{
+  const r=mod[fn]();
+  if(r&&typeof r.catch==='function')r.catch(e=>console.error('Falha ao abrir o módulo '+id,e));
+  return true;
+ }catch(e){console.error('Falha ao abrir o módulo '+id,e);return false;}
+}
 
 let expanded=true,mobileOpen=false,modeSeen='',current='nav-events',queued=false;
 // Menu lateral inicia recolhido; abertura somente por interação explícita.
@@ -11,13 +34,16 @@ function mode(){
  const el=app();if(!el || !el.querySelector('.r-topbar') || !el.querySelector('main.page') || el.querySelector('#campo-root'))return null;
  return /Inteligência/i.test(el.querySelector('.r-page-h1')?.textContent||'')?'inteligencia':'central';
 }
+// Postos e Escalas é só do administrador: esconde o item quando o perfil confirmado pelo servidor é outro.
+// Sem perfil guardado (modo demonstração) o item aparece e a própria página confere o acesso.
+function podeGerirPostos(){try{const p=JSON.parse(localStorage.getItem('painel-perfil-confirmado')||'null');return !p||!p.perfil||p.perfil==='admin';}catch(e){return true;}}
 function items(){
  const m=mode();if(!m)return [];
  if(m==='inteligencia')return [{title:'INTELIGÊNCIA',links:[{id:'nav-intel',name:'Ocorrências para análise'},{id:'mapa-gps',name:'Monitoramento GPS'}]}];
  return [
  {title:'OPERAÇÕES',links:[{id:'nav-events',name:'Eventos'},{id:'nav-occurrences',name:'Ocorrências'},{id:'mapa-gps',name:'Monitoramento GPS'}]},
  {title:'GESTÃO',links:[{id:'efetivo-turno',name:'Efetivo no Turno'},{id:'veiculo-turno',name:'Veículo no Turno'},{id:'frota',name:'Frota e Checklists'}]},
- {title:'CADASTROS',links:[{id:'colaboradores',name:'Colaboradores'},{id:'gestao-postos',name:'Postos e Escalas'}]}
+ {title:'CADASTROS',links:[{id:'colaboradores',name:'Colaboradores'}].concat(podeGerirPostos()?[{id:'gestao-postos',name:'Postos e Escalas'}]:[])}
  ];
 }
 function closeOverlay(){
@@ -44,7 +70,6 @@ function closeMobile(){mobileOpen=false;document.body.classList.remove('ccs-side
 function setExpanded(next){expanded=true;document.body.classList.remove('ccs-sidebar-collapsed');const toggle=document.getElementById('ccs-collapse');if(toggle){toggle.setAttribute('aria-expanded','true');toggle.setAttribute('aria-label','Menu lateral fixo');toggle.hidden=true;}}
 function navigate(id){
  closeMobile();if(!mode())return;
- if(id==='gestao-postos'){window.location.assign('gestao-postos.html');return;}
  if(id==='nav-intel'){closeOverlay();current=id;syncActive();return;}
  if(id==='nav-events'||id==='nav-occurrences'){
   closeOverlay();
@@ -53,18 +78,20 @@ function navigate(id){
  }else{
   if(document.getElementById(overlays[id])){current=id;syncActive();return;}
   closeOverlay();
-  const button=app()?.querySelector('[data-act="'+id+'"]');
-  if(button)button.click();else {console.warn('Ação do módulo não encontrada:',id);return;}
+  if(!openModule(id))return;
  }
  current=id;syncActive();
 }
 function build(){
  const m=mode(),nav=document.getElementById('ccs-nav');
  if(!m){
+  // saiu da conta ou sessão expirou: módulos abertos não podem ficar por cima da tela de login
+  closeOverlay();window.CCSPhotoGallery?.close?.();
   nav?.remove();document.getElementById('ccs-nav-backdrop')?.remove();
   document.body.classList.remove('ccs-shell','ccs-sidebar-collapsed','ccs-sidebar-mobile-open');modeSeen='';return;
  }
  if(nav&&modeSeen===m){syncActive();return}
+ if(modeSeen&&modeSeen!==m)closeOverlay(); // trocou de visão (central/inteligência)
  nav?.remove();document.getElementById('ccs-nav-backdrop')?.remove();modeSeen=m;
  const backdrop=document.createElement('button');backdrop.id='ccs-nav-backdrop';backdrop.type='button';backdrop.setAttribute('aria-label','Fechar menu lateral');backdrop.onclick=closeMobile;document.body.appendChild(backdrop);
  const sidebar=document.createElement('aside');sidebar.id='ccs-nav';sidebar.setAttribute('aria-label','Navegação do Security CCS');

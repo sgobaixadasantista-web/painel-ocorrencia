@@ -1,16 +1,21 @@
 /* Service worker do painel: deixa o aplicativo abrir sem internet.
    Só guarda arquivos DESTE site (tela, estilos, fontes). Nada do Supabase passa por aqui:
    os dados dos registros ficam no banco e na fila do aparelho (IndexedDB), não neste cache.
-   Para forçar atualização do aplicativo em todos os aparelhos, troque o número em VERSAO. */
-var VERSAO = 'v2';
+   Para forçar atualização do aplicativo em todos os aparelhos, troque o número em VERSAO.
+   ATENÇÃO: todo arquivo novo carregado pelo index.html precisa entrar em ARQUIVOS (e VERSAO precisa subir),
+   senão o app instalado abre quebrado sem internet. */
+var VERSAO = 'v11';
 var CACHE = 'security-rumo-' + VERSAO;
-var ARQUIVOS = ['./', 'index.html', 'manifest.webmanifest', 'css/tokens.css', 'css/rumo.css', 'css/app.css',
-  'js/config.js', 'js/icons.js', 'js/tipificacao-demo.js', 'js/minutas-demo.js', 'js/data.js', 'js/fila.js', 'js/campo.js', 'js/app.js',
+var ARQUIVOS = ['./', 'index.html', 'manifest.webmanifest',
+  'css/tokens.css', 'css/rumo.css', 'css/app.css', 'css/design-system.css', 'css/navigation.css', 'css/photo-gallery.css', 'css/modules.css',
+  'js/config.js', 'js/icons.js', 'js/tipificacao-demo.js', 'js/malha-demo.js', 'js/minutas-demo.js', 'js/data.js', 'js/fila.js', 'js/campo.js', 'js/app.js',
+  'js/photo-gallery.js', 'js/rastreamento.js', 'js/efetivo.js', 'js/veiculos.js', 'js/frota.js', 'js/colaboradores.js', 'js/postos.js', 'js/navigation.js',
+  'js/vendor/supabase-2.45.4.js',
   'assets/logo-fundo-claro.png', 'assets/logo-fundo-escuro.png', 'assets/icon-192.png', 'assets/icon-512.png',
   'assets/fonts/Inter-400.woff2', 'assets/fonts/Inter-600.woff2', 'assets/fonts/Inter-700.woff2', 'assets/fonts/Inter-800.woff2'];
 
 self.addEventListener('install', function (e) {
-  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(ARQUIVOS); }).then(function () { return self.skipWaiting(); }));
+  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(ARQUIVOS.map(function (u) { return new Request(u, { cache: 'reload' }); })); }).then(function () { return self.skipWaiting(); }));
 });
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k.indexOf('security-rumo-') === 0 && k !== CACHE; }).map(function (k) { return caches.delete(k); })); }).then(function () { return self.clients.claim(); }));

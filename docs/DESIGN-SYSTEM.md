@@ -64,11 +64,11 @@ A ordem deve ser preservada no `index.html`. Não copiar a folha de estilo de um
 ### Hierarquia
 - **Operações:** Visão geral, Ocorrências, Monitoramento GPS.
 - **Gestão:** Efetivo no Turno, Veículo no Turno, Frota e Checklists.
-- **Cadastros:** Colaboradores (e futuros cadastros mestres).
+- **Cadastros:** Colaboradores, Postos e Escalas (só administrador) e futuros cadastros mestres.
 - **Conta:** Perfil, seleção de visão (se administrador), Sair.
 
 ### Contrato visual e de comportamento
-- Desktop >= 1024 px: sidebar expandida de 240 px, recolhível para 64 px; conteúdo usa a largura restante.
+- Desktop >= 1024 px: sidebar fixa e sempre expandida, de 240 px; conteúdo usa a largura restante. (O modo recolhido de 64 px foi previsto, mas hoje está desligado.)
 - Mobile < 1024 px: sidebar em gaveta com backdrop, fechada por padrão; fecha ao navegar, no Escape ou no backdrop.
 - Topbar: logomarca/nome, controle do menu, atualização, tema e perfil; nenhuma lista de módulos na barra.
 - Item selecionado destacado por fundo azul profundo e barra laranja, com `aria-current="page"`.
@@ -85,4 +85,45 @@ A ordem deve ser preservada no `index.html`. Não copiar a folha de estilo de um
 4. Adaptar Campo separadamente para uso operacional mobile.
 5. Testar cada perfil, desktop/mobile, roteamento, volta/refresh e deploy antes de remover menus legados.
 
-**Estado atual:** padrão documentado. O layout/roteamento do sistema existente ainda não foi migrado para esse modelo.
+**Estado atual (10/11/2026):** a sidebar e a topbar permanente já estão em uso na Central (`js/navigation.js`, `css/navigation.css`). Os módulos abrem como painéis ao lado da sidebar, não como views com rota: atualizar a página volta para Eventos, e o breadcrumb ainda não existe.
+
+## Como criar um módulo do painel
+
+Todo módulo novo abre **dentro do painel**, ao lado do menu lateral e abaixo da barra superior, nunca como página HTML separada. Exemplo completo: **Postos e Escalas** (`js/postos.js`).
+
+### 1. Arquivo do módulo: `js/<modulo>.js`
+- Envolva tudo numa função `(function(){ ... })();` e exponha só o que o menu usa: `window.SecurityXxx = { show, close };`.
+- `show()` cria o painel uma única vez (se já existir, não faz nada): `<div id="xxx-overlay" class="ccs-modulo">` contendo `<div class="ccs-modulo-painel">`.
+- Dentro do painel, nesta ordem:
+  - `<header class="ccs-module-topbar">` com `.ccs-module-brand` (SECURITY CCS + nome do módulo) e `.ccs-module-actions`, incluindo o botão de fechar com `id="xxx-close"`. No uso normal, a barra global do painel fica por cima dela; ela existe para manter o padrão dos demais módulos.
+  - `.ccs-modulo-intro`: título `h2` e explicação curta.
+  - Linha de mensagem com `role="status"` (`.ccs-modulo-msg`, com `.is-erro` ou `.is-ok`).
+  - Conteúdo em cartões `.ccs-modulo-card`: formulários em `.ccs-modulo-grid` (cada campo dentro de um `label`), botões em `.ccs-modulo-botoes` (`.is-primario` na ação principal) e tabelas dentro de `.ccs-modulo-scroll`.
+- Supabase: crie o cliente com a URL e a chave **anon** de `window.PAINEL_CONFIG`, como em `js/postos.js`. Sem configuração, mostre a mensagem e não quebre a tela.
+- Acesso: confira a sessão e o perfil (`perfis`) **antes** de mostrar o conteúdo. Sem permissão, mantenha o conteúdo com `hidden` e mostre só a mensagem. Isso vale só para a interface: quem protege os dados é a RLS ou a função do banco.
+- Texto vindo do banco entra com `textContent` ou passando por `esc()`, nunca como HTML direto.
+
+### 2. Estilos
+- Use as classes `.ccs-modulo-*` de `css/navigation.css`. Elas já posicionam o painel ao lado da sidebar, ocupam a tela toda no celular (< 1024 px) e trazem cartões, formulários, tabelas e foco visível.
+- Crie CSS próprio só para o que for específico do módulo, sempre com o prefixo `#xxx-overlay`, para não afetar outras telas.
+
+### 3. Registro no menu: `js/navigation.js`
+- `overlays`: `'id-do-menu': 'xxx-overlay'`.
+- `closeIds`: `'xxx-overlay': 'xxx-close'` (o menu clica nesse botão para fechar um módulo ao abrir outro).
+- `openers`: `'id-do-menu': ['SecurityXxx', 'show']`.
+- `items()`: inclua `{ id: 'id-do-menu', name: 'Nome no menu' }` no grupo certo (Operações, Gestão ou Cadastros). Para restringir por perfil, siga `podeGerirPostos()`, que lê o perfil confirmado pelo servidor em `localStorage['painel-perfil-confirmado']`.
+
+### 4. Carregamento e funcionamento offline
+- `index.html`: adicione `<script src="js/<modulo>.js"></script>` antes de `js/navigation.js`.
+- `sw.js`: inclua `'js/<modulo>.js'` em `ARQUIVOS` e **suba `VERSAO`** (ex.: `v7` → `v8`). Sem isso, os aparelhos continuam com a versão antiga em cache.
+
+### 5. Página antiga (se o módulo substituir uma)
+- Não apague o HTML antigo: troque o conteúdo por um redirecionamento para `index.html`, como foi feito com `gestao-postos.html`, para não quebrar links e favoritos.
+
+### 6. Testes antes de publicar
+- Abrir pelo menu, trocar para outro módulo e voltar: só um painel aberto e o item certo marcado no menu.
+- Perfil sem permissão: item escondido no menu e, se o módulo for aberto, só a mensagem aparece.
+- Celular (375 px): sem rolagem horizontal da página e menu em gaveta.
+- Modo demonstração (sem Supabase): a tela mostra a mensagem de configuração, sem erro no console.
+- Com login real: carregar, salvar e editar, e conferir que a RLS recusa um perfil sem permissão.
+- Depois do deploy: abrir o painel já instalado e confirmar que o módulo novo aparece (cache atualizado).
